@@ -1,0 +1,138 @@
+package usecase
+
+import (
+	"context"
+
+	"github.com/airoa-org/yubi-app/backend/internal/apperror"
+	"github.com/airoa-org/yubi-app/backend/internal/ccontext"
+	"github.com/airoa-org/yubi-app/backend/internal/event"
+	"github.com/airoa-org/yubi-app/backend/internal/repository"
+	"github.com/uptrace/bun"
+)
+
+type SubTaskActionInput struct {
+	EpisodeID string
+	SubTaskID string
+}
+
+type EpisodeSubTaskUsecase interface {
+	Complete(ctx context.Context, input SubTaskActionInput) error
+	Skip(ctx context.Context, input SubTaskActionInput) error
+}
+
+type episodeSubTask struct {
+	episodeRepo        repository.Episode
+	episodeSubTaskRepo repository.EpisodeSubTask
+	db                 *bun.DB
+	bus                *event.Bus
+	robotBus           *event.Bus
+	listBus            *event.Bus
+}
+
+func NewEpisodeSubTask(
+	episodeRepo repository.Episode,
+	episodeSubTaskRepo repository.EpisodeSubTask,
+	db *bun.DB,
+	bus *event.Bus,
+	robotBus *event.Bus,
+	listBus *event.Bus,
+) EpisodeSubTaskUsecase {
+	return &episodeSubTask{
+		episodeRepo:        episodeRepo,
+		episodeSubTaskRepo: episodeSubTaskRepo,
+		db:                 db,
+		bus:                bus,
+		robotBus:           robotBus,
+		listBus:            listBus,
+	}
+}
+
+func (e *episodeSubTask) Complete(ctx context.Context, input SubTaskActionInput) error {
+	robotID, err := ccontext.RobotID(ctx)
+	if err != nil {
+		return err
+	}
+
+	err = e.db.RunInTx(ctx, nil, func(ctx context.Context, tx bun.Tx) error {
+		episode, err := e.episodeRepo.GetByID(ctx, tx, input.EpisodeID)
+		if err != nil {
+			return err
+		}
+
+		if episode.RobotID != robotID {
+			return apperror.NewError(apperror.NewMessage(apperror.CodeForbidden, "robot is not authorized to operate this episode"))
+		}
+
+		subtask, err := e.episodeSubTaskRepo.GetByID(ctx, tx, input.SubTaskID)
+		if err != nil {
+			return err
+		}
+
+		if subtask.EpisodeID != input.EpisodeID {
+			return apperror.NewError(apperror.NewMessage(apperror.CodeBadRequest, "subtask does not belong to the episode"))
+		}
+
+		if err := subtask.Complete(); err != nil {
+			return err
+		}
+
+		if err := e.episodeSubTaskRepo.Update(ctx, tx, subtask); err != nil {
+			return err
+		}
+
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+
+	e.bus.Notify(input.EpisodeID)
+	e.robotBus.Notify(robotID)
+	e.listBus.Notify("list")
+	return nil
+}
+
+func (e *episodeSubTask) Skip(ctx context.Context, input SubTaskActionInput) error {
+	robotID, err := ccontext.RobotID(ctx)
+	if err != nil {
+		return err
+	}
+
+	err = e.db.RunInTx(ctx, nil, func(ctx context.Context, tx bun.Tx) error {
+		episode, err := e.episodeRepo.GetByID(ctx, tx, input.EpisodeID)
+		if err != nil {
+			return err
+		}
+
+		if episode.RobotID != robotID {
+			return apperror.NewError(apperror.NewMessage(apperror.CodeForbidden, "robot is not authorized to operate this episode"))
+		}
+
+		subtask, err := e.episodeSubTaskRepo.GetByID(ctx, tx, input.SubTaskID)
+		if err != nil {
+			return err
+		}
+
+		if subtask.EpisodeID != input.EpisodeID {
+			return apperror.NewError(apperror.NewMessage(apperror.CodeBadRequest, "subtask does not belong to the episode"))
+		}
+
+		if err := subtask.Skip(); err != nil {
+			return err
+		}
+
+		if err := e.episodeSubTaskRepo.Update(ctx, tx, subtask); err != nil {
+			return err
+		}
+
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+
+	e.bus.Notify(input.EpisodeID)
+	e.robotBus.Notify(robotID)
+	e.listBus.Notify("list")
+	return nil
+}

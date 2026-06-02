@@ -1,0 +1,36 @@
+# ========================================
+# Development Dockerfile with Go and Air
+# ========================================
+FROM golang:1.25.10-alpine AS develop
+
+ENV TZ=Asia/Tokyo
+
+# Install dependencies
+RUN apk add --no-cache git ca-certificates tzdata curl
+
+# Install Atlas CLI
+RUN curl -sSf https://atlasgo.sh | sh
+
+# Install development tools (before COPY for layer caching)
+RUN go install github.com/air-verse/air@v1.64.5 && \
+    go install honnef.co/go/tools/cmd/staticcheck@v0.7.0 && \
+    go install github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen@v2.4.1 && \
+    go install github.com/k1LoW/runn/cmd/runn@v1.3.0
+
+# Set working directory
+WORKDIR /app
+
+# Copy go.mod and go.sum first for caching
+COPY go.mod go.sum ./
+RUN go mod download
+
+# Copy source code
+COPY . .
+
+# Expose port
+EXPOSE 8000
+
+ENV PORT=8000
+
+# Run with air for hot reload
+CMD sh -c "air -c .air.toml & tail -F ./air.log"

@@ -1,0 +1,15 @@
+.git
+.github
+.next
+.turbo
+node_modules
+npm-debug.log
+yarn-debug.log
+yarn-error.log
+pnpm-debug.log
+.env
+.env.*
+Dockerfile*
+compose*.yaml
+README.md
+docs

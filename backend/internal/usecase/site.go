@@ -1,0 +1,91 @@
+package usecase
+
+import (
+	"context"
+
+	"github.com/airoa-org/yubi-app/backend/internal/domain/model"
+	"github.com/airoa-org/yubi-app/backend/internal/pagination"
+	"github.com/airoa-org/yubi-app/backend/internal/repository"
+	"github.com/uptrace/bun"
+)
+
+type SiteUsecase interface {
+	Create(ctx context.Context, input SiteCreateInput) (model.Site, error)
+	GetByID(ctx context.Context, id string) (model.Site, error)
+	List(ctx context.Context, filter repository.SiteListFilter, page, limit int) (model.Sites, int, error)
+	Update(ctx context.Context, input SiteUpdateInput) (model.Site, error)
+	Delete(ctx context.Context, id string) error
+}
+
+type SiteCreateInput struct {
+	OrganizationID string
+	Name           string
+}
+
+type SiteUpdateInput struct {
+	ID   string
+	Name string
+}
+
+type siteUsecase struct {
+	siteRepo repository.Site
+	db       *bun.DB
+}
+
+func NewSite(siteRepo repository.Site, db *bun.DB) *siteUsecase {
+	return &siteUsecase{
+		siteRepo: siteRepo,
+		db:       db,
+	}
+}
+
+func (s *siteUsecase) Create(ctx context.Context, input SiteCreateInput) (model.Site, error) {
+	si, err := model.InitSite(input.OrganizationID, input.Name)
+	if err != nil {
+		return model.Site{}, err
+	}
+
+	created, err := s.siteRepo.Create(ctx, s.db, si)
+	if err != nil {
+		return model.Site{}, err
+	}
+
+	return created, nil
+}
+
+func (s *siteUsecase) GetByID(ctx context.Context, id string) (model.Site, error) {
+	return s.siteRepo.GetByID(ctx, s.db, id)
+}
+
+func (s *siteUsecase) List(ctx context.Context, filter repository.SiteListFilter, page, limit int) (model.Sites, int, error) {
+	if limit <= 0 {
+		limit = pagination.DefaultLimit
+	}
+	if page <= 0 {
+		page = 1
+	}
+	offset := (page - 1) * limit
+	return s.siteRepo.List(ctx, s.db, filter, limit, offset)
+}
+
+func (s *siteUsecase) Update(ctx context.Context, input SiteUpdateInput) (model.Site, error) {
+	si, err := s.siteRepo.GetByID(ctx, s.db, input.ID)
+	if err != nil {
+		return model.Site{}, err
+	}
+
+	if err := si.SetName(input.Name); err != nil {
+		return model.Site{}, err
+	}
+
+	updated, err := s.siteRepo.Update(ctx, s.db, si)
+	if err != nil {
+		return model.Site{}, err
+	}
+
+	return updated, nil
+}
+
+func (s *siteUsecase) Delete(ctx context.Context, id string) error {
+	return s.siteRepo.Delete(ctx, s.db, id)
+}

@@ -1,0 +1,57 @@
+# Common
+.DS_Store
+.env
+.envrc
+*.log
+*.tmp
+*.swp
+*.swo
+
+# Node.js
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+dist/
+build/
+.cache/
+.next/
+out/
+coverage/
+*.tsbuildinfo
+
+# Go
+bin/
+build/
+*.exe
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+
+go.work
+go.work.sum
+
+# TLS
+*.key
+*.csr
+*.crt
+
+# VSCode
+.vscode/*
+
+# IntelliJ / Goland
+.idea/
+
+# Claude Code
+.claude/
+
+
+backend/tmp
+
+# TypeScript
+next-env.d.ts
+
+scripts

@@ -1,0 +1,5701 @@
+openapi: 3.1.0
+info:
+  title: Yubi App API
+  version: 1.0.0
+  description: REST API for robot teleoperation data collection and management
+servers:
+  - url: https://api.dev.example.com/v1
+    description: dev
+tags:
+  - name: users
+    description: Users
+  - name: organizations
+    description: Organizations
+  - name: permissions
+    description: Permissions
+  - name: robots
+    description: Robots
+  - name: tasks
+    description: Tasks
+  - name: sub-tasks
+    description: Sub-tasks
+  - name: episodes
+    description: Episodes
+  - name: sites
+    description: Sites
+  - name: locations
+    description: Locations
+  - name: reports
+    description: Reports / analytics exports
+  - name: api-keys
+    description: API keys for robot-side authentication
+paths:
+  # === User API ===
+  /me:
+    get:
+      tags:
+        - users
+      summary: Get current user
+      description: Retrieve the currently authenticated user's information
+      operationId: getMe
+      responses:
+        "200":
+          description: Current user info
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+    put:
+      tags:
+        - users
+      summary: Update current user
+      description: |
+        Update the currently authenticated user's own profile.
+        Available to all authenticated roles. Only fields exposed by
+        `MeUpdateRequest` may be updated via this endpoint.
+      operationId: updateMe
+      requestBody:
+        description: Self-updatable fields
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MeUpdateRequest"
+      responses:
+        "200":
+          description: Updated user info
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+  /users:
+    get:
+      tags:
+        - users
+      summary: List users
+      description: Retrieve list of users
+      operationId: listUsers
+      parameters:
+        - name: limit
+          in: query
+          description: Items per page
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 1000
+            default: 50
+        - name: page
+          in: query
+          description: Page number
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: organization_id
+          in: query
+          description: Filter by organization ID
+          required: false
+          schema:
+            type: string
+        - name: location_id
+          in: query
+          description: Filter by location ID
+          required: false
+          schema:
+            type: string
+        - name: site_id
+          in: query
+          description: Filter by site ID
+          required: false
+          schema:
+            type: string
+        - name: search
+          in: query
+          description: Search by display name (case-insensitive partial match)
+          required: false
+          schema:
+            type: string
+        - name: sort_by
+          in: query
+          description: Column to sort by
+          required: false
+          schema:
+            type: string
+            enum:
+              - name
+              - email
+              - role
+              - location
+              - created_at
+            x-enumNames:
+              - UserSortByName
+              - UserSortByEmail
+              - UserSortByRole
+              - UserSortByLocation
+              - UserSortByCreatedAt
+        - name: sort_order
+          in: query
+          description: Sort direction
+          required: false
+          schema:
+            type: string
+            enum:
+              - asc
+              - desc
+            x-enumNames:
+              - UserSortOrderAsc
+              - UserSortOrderDesc
+      responses:
+        "200":
+          description: User list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserListResponse"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+    post:
+      tags:
+        - users
+      summary: Create User
+      description: Create User
+      operationId: createUser
+      requestBody:
+        description: Data for the create user
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UserCreateRequest"
+      responses:
+        "201":
+          description: User created successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+  /users/{user_id}:
+    parameters:
+      - name: user_id
+        in: path
+        description: User ID
+        required: true
+        schema:
+          type: string
+    get:
+      tags:
+        - users
+      summary: Get user details
+      description: Retrieve user details
+      operationId: getUserById
+      responses:
+        "200":
+          description: User info
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserResponse"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+    put:
+      tags:
+        - users
+      summary: Update user
+      description: Update a user
+      operationId: updateUserById
+      requestBody:
+        description: Data for the user to update
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UserUpdateRequest"
+      responses:
+        "200":
+          description: User updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+    delete:
+      tags:
+        - users
+      summary: Delete user
+      operationId: deleteUserById
+      responses:
+        "204":
+          description: User deleted successfully (no content)
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+  /users/{user_id}/role:
+    parameters:
+      - name: user_id
+        in: path
+        description: User ID
+        required: true
+        schema:
+          type: string
+    put:
+      tags:
+        - users
+      summary: Update user role
+      description: Update a user's role
+      operationId: updateUserRole
+      requestBody:
+        description: Data for the user role to update
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UserRoleUpdateRequest"
+      responses:
+        "200":
+          description: User role updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /users/{user_id}/locations:
+    put:
+      tags:
+        - users
+      summary: Update user locations
+      description: Assign locations to a user (admin only)
+      operationId: updateUserLocations
+      parameters:
+        - name: user_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UserLocationsUpdateRequest"
+      responses:
+        "200":
+          description: Updated user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  # === User Import API ===
+  /users/import/validate:
+    post:
+      tags:
+        - users
+      summary: Validate CSV for user import
+      description: |
+        Validates a CSV string for user import. Returns a preview of valid rows,
+        duplicate rows (by email), and rows with errors. Does not create users.
+      operationId: validateUserImport
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UserImportRequest"
+      responses:
+        "200":
+          description: Validation result with preview
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserImportValidationResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /users/import:
+    post:
+      tags:
+        - users
+      summary: Import users from CSV
+      description: |
+        Imports users from a CSV string. Valid rows are processed independently;
+        duplicate rows are skipped. Each valid row creates a user in the database.
+      operationId: importUsers
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UserImportRequest"
+      responses:
+        "200":
+          description: Import result report
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserImportResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  # === Organization API ===
+  /organizations:
+    get:
+      tags:
+        - organizations
+      summary: List organizations
+      description: Retrieve list of organizations
+      operationId: listOrganizations
+      parameters:
+        - name: limit
+          in: query
+          description: Items per page
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 1000
+            default: 50
+        - name: page
+          in: query
+          description: Page number
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+      responses:
+        "200":
+          description: Organization list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrganizationListResponse"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+    post:
+      tags:
+        - organizations
+      summary: Create organization
+      description: Create an organization
+      operationId: createOrganization
+      requestBody:
+        description: Data for the organization to create
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OrganizationCreateRequest"
+      responses:
+        "201":
+          description: Organization created successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrganizationResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+  /organizations/{organization_id}:
+    parameters:
+      - name: organization_id
+        in: path
+        description: Organization ID
+        required: true
+        schema:
+          type: string
+    get:
+      tags:
+        - organizations
+      summary: Get organization details
+      description: Retrieve organization details
+      operationId: getOrganizationById
+      responses:
+        "200":
+          description: Organization info
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrganizationResponse"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+    put:
+      tags:
+        - organizations
+      summary: Update organization
+      description: Update organization information
+      operationId: updateOrganizationById
+      requestBody:
+        description: Data for the organization to update
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OrganizationUpdateRequest"
+      responses:
+        "200":
+          description: Organization updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrganizationResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+    delete:
+      tags:
+        - organizations
+      summary: Delete organization
+      description: Delete an organization
+      operationId: deleteOrganizationById
+      responses:
+        "204":
+          description: Organization deleted successfully (no content)
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  # === Permission API ===
+  /users/{user_id}/permissions:
+    parameters:
+      - name: user_id
+        in: path
+        description: User ID
+        required: true
+        schema:
+          type: string
+    get:
+      tags:
+        - permissions
+      summary: List permissions for a user
+      operationId: listUserPermissions
+      responses:
+        "200":
+          description: Permission list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Permission"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+    post:
+      tags:
+        - permissions
+      summary: Grant permission to a user
+      operationId: grantUserPermission
+      requestBody:
+        description: Data of the permission to grant
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PermissionCreate"
+      responses:
+        "201":
+          description: Permission granted successfully
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+    delete:
+      tags:
+        - permissions
+      summary: Revoke permission from a user
+      operationId: revokeUserPermission
+      parameters:
+        - name: code
+          in: query
+          description: Permission code to revoke
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: Permission revoked successfully (no content)
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  # === Fleet API ===
+  /fleet/summary:
+    get:
+      tags:
+        - fleet
+      summary: Get fleet summary
+      description: Real-time robot status aggregation by site, robot type, and leader/follower
+      operationId: getFleetSummary
+      responses:
+        "200":
+          description: Fleet summary
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/FleetSiteSummary"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /fleet/stats:
+    get:
+      tags:
+        - fleet
+      summary: Get fleet statistics
+      description: Period-based data collection time statistics by site and robot type
+      operationId: getFleetStats
+      parameters:
+        - name: from
+          in: query
+          description: Start of period (inclusive)
+          required: true
+          schema:
+            type: string
+            format: date-time
+        - name: to
+          in: query
+          description: End of period (exclusive)
+          required: true
+          schema:
+            type: string
+            format: date-time
+      responses:
+        "200":
+          description: Fleet statistics
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/FleetSiteStats"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /fleet/collection-trend:
+    get:
+      tags:
+        - fleet
+      summary: Get collection trend
+      description: Time series data collection trend by site and robot type
+      operationId: getFleetCollectionTrend
+      parameters:
+        - name: granularity
+          in: query
+          description: Time granularity
+          required: true
+          schema:
+            type: string
+            enum:
+              - hourly
+              - daily
+              - monthly
+        - name: from
+          in: query
+          description: Start of period (inclusive)
+          required: true
+          schema:
+            type: string
+            format: date-time
+        - name: to
+          in: query
+          description: End of period (exclusive)
+          required: true
+          schema:
+            type: string
+            format: date-time
+      responses:
+        "200":
+          description: Collection trend data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CollectionTrend"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  # === Robot API ===
+  /robots:
+    get:
+      tags:
+        - robots
+      summary: List robots
+      operationId: listRobots
+      parameters:
+        - name: organization_id
+          in: query
+          description: Filter by organization ID
+          required: false
+          schema:
+            type: string
+        - name: site_id
+          in: query
+          description: Filter by site ID
+          required: false
+          schema:
+            type: string
+        - name: location_id
+          in: query
+          description: Filter by location ID
+          required: false
+          schema:
+            type: string
+        - name: status
+          in: query
+          description: Filter by robot status
+          required: false
+          schema:
+            $ref: "#/components/schemas/RobotStatus"
+        - name: robot_type
+          in: query
+          description: Filter by robot type
+          required: false
+          schema:
+            type: string
+        - name: page
+          in: query
+          description: Page number (1-based)
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: limit
+          in: query
+          description: Items per page
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 1000
+            default: 20
+        - name: search
+          in: query
+          description: Search by name (case-insensitive partial match)
+          required: false
+          schema:
+            type: string
+        - name: sort_by
+          in: query
+          description: Column to sort by
+          required: false
+          schema:
+            type: string
+            enum:
+              - name
+              - location_id
+              - robot_type
+              - status
+              - leader_status
+              - last_heartbeat_at
+              - active_episode_id
+              - active_user_id
+            x-enumNames:
+              - RobotSortByName
+              - RobotSortByLocationId
+              - RobotSortByRobotType
+              - RobotSortByStatus
+              - RobotSortByLeaderStatus
+              - RobotSortByLastHeartbeatAt
+              - RobotSortByActiveEpisodeId
+              - RobotSortByActiveUserId
+        - name: sort_order
+          in: query
+          description: Sort direction
+          required: false
+          schema:
+            type: string
+            enum:
+              - asc
+              - desc
+            x-enumNames:
+              - RobotSortOrderAsc
+              - RobotSortOrderDesc
+      responses:
+        "200":
+          description: Robot list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RobotListResponse"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+    post:
+      tags:
+        - robots
+      summary: Create robot
+      operationId: createRobot
+      requestBody:
+        description: Data for the robot to create
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RobotCreate"
+      responses:
+        "201":
+          description: Robot created successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Robot"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+  /robot-types:
+    get:
+      tags:
+        - robots
+      summary: List distinct robot types
+      operationId: listRobotTypes
+      parameters:
+        - name: site_id
+          in: query
+          schema:
+            type: string
+        - name: location_id
+          in: query
+          schema:
+            type: string
+        - name: status
+          in: query
+          schema:
+            $ref: "#/components/schemas/RobotStatus"
+      responses:
+        "200":
+          description: Robot type name list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: string
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+  /robots/{robotId}:
+    parameters:
+      - name: robotId
+        in: path
+        description: Robot ID
+        required: true
+        schema:
+          type: string
+    get:
+      tags:
+        - robots
+      summary: Get robot details
+      operationId: getRobotById
+      responses:
+        "200":
+          description: Robot info
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Robot"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+    put:
+      tags:
+        - robots
+      summary: Update robot
+      operationId: updateRobotById
+      requestBody:
+        description: Data for the robot to update
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RobotUpdate"
+      responses:
+        "200":
+          description: Robot updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Robot"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+    delete:
+      tags:
+        - robots
+      summary: Delete robot
+      operationId: deleteRobotById
+      responses:
+        "204":
+          description: Robot deleted successfully (no content)
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /robots/{robotId}/operator:
+    parameters:
+      - name: robotId
+        in: path
+        description: Robot ID
+        required: true
+        schema:
+          type: string
+    get:
+      tags:
+        - robots
+      summary: Get active operator
+      description: Returns the current operator for this robot, or 204 if none.
+      operationId: getRobotOperator
+      responses:
+        "200":
+          description: Current operator
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RobotOperator"
+        "204":
+          description: No active operator
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+    put:
+      tags:
+        - robots
+      summary: Set active operator (heartbeat)
+      description: >-
+        Register or refresh the active operator for this robot.
+        Stored in Redis with a short TTL. Returns 409 if another user
+        already holds the operator lock.
+      operationId: setRobotOperator
+      requestBody:
+        description: Operator identity
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RobotOperatorRequest"
+      responses:
+        "200":
+          description: Operator set successfully
+        "409":
+          description: Robot locked by another operator
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RobotOperator"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+    delete:
+      tags:
+        - robots
+      summary: Clear active operator
+      description: Release the operator lock for this robot.
+      operationId: clearRobotOperator
+      responses:
+        "204":
+          description: Operator cleared
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  # === Task API ===
+  /tasks:
+    get:
+      tags:
+        - tasks
+      summary: List tasks
+      operationId: listTasks
+      parameters:
+        - name: has_approved_version
+          in: query
+          description: Filter tasks that have at least one approved version
+          required: false
+          schema:
+            type: boolean
+        - name: page
+          in: query
+          description: Page number (1-based)
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: limit
+          in: query
+          description: Items per page
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 1000
+            default: 20
+        - name: sort_by
+          in: query
+          description: Column to sort by
+          required: false
+          schema:
+            type: string
+            enum:
+              - name
+              - robot_type
+              - priority
+              - difficulty
+              - target_duration_seconds
+              - status
+              - recommended
+            x-enumNames:
+              - TaskSortByName
+              - TaskSortByRobotType
+              - TaskSortByPriority
+              - TaskSortByDifficulty
+              - TaskSortByTargetDurationSeconds
+              - TaskSortByStatus
+              - TaskSortByRecommended
+        - name: sort_order
+          in: query
+          description: Sort direction
+          required: false
+          schema:
+            type: string
+            enum:
+              - asc
+              - desc
+            x-enumNames:
+              - TaskSortOrderAsc
+              - TaskSortOrderDesc
+        - name: status
+          in: query
+          description: Filter by task status (multiple values allowed)
+          required: false
+          explode: true
+          schema:
+            type: array
+            items:
+              $ref: "#/components/schemas/TaskStatus"
+        - name: priority
+          in: query
+          description: Filter by task priority (multiple values allowed)
+          required: false
+          explode: true
+          schema:
+            type: array
+            items:
+              $ref: "#/components/schemas/TaskPriority"
+        - name: difficulty
+          in: query
+          description: Filter by task difficulty (multiple values allowed)
+          required: false
+          explode: true
+          schema:
+            type: array
+            items:
+              $ref: "#/components/schemas/TaskDifficulty"
+        - name: robot_type
+          in: query
+          description: Filter by robot type
+          required: false
+          schema:
+            type: string
+        - name: search
+          in: query
+          description: Search by name (case-insensitive partial match)
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Task list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TaskListResponse"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+    post:
+      tags:
+        - tasks
+      summary: Create task
+      operationId: createTask
+      requestBody:
+        description: Data for the task to create
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TaskCreate"
+      responses:
+        "201":
+          description: Task created successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Task"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+  /tasks/summary:
+    get:
+      tags:
+        - tasks
+      summary: Get task summary
+      operationId: getTaskSummary
+      parameters:
+        - name: robot_type
+          in: query
+          description: Filter by robot type (multiple values allowed)
+          required: false
+          explode: true
+          schema:
+            type: array
+            items:
+              type: string
+        - name: category_type_id
+          in: query
+          description: Filter by category type ID
+          required: false
+          schema:
+            type: string
+        - name: tag_id
+          in: query
+          description: Filter by tag ID (multiple values allowed)
+          required: false
+          explode: true
+          schema:
+            type: array
+            items:
+              type: string
+        - name: from
+          in: query
+          description: Start date for deadline filter (YYYY-MM-DD, inclusive)
+          required: false
+          schema:
+            type: string
+            format: date
+        - name: to
+          in: query
+          description: End date for deadline filter (YYYY-MM-DD, inclusive)
+          required: false
+          schema:
+            type: string
+            format: date
+      responses:
+        "200":
+          description: Task summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TaskSummaryResponse"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /tasks/completion-trend:
+    get:
+      tags:
+        - tasks
+      summary: Get task completion trend
+      operationId: getTaskCompletionTrend
+      parameters:
+        - name: robot_type
+          in: query
+          description: Filter by robot type (multiple values allowed)
+          required: false
+          explode: true
+          schema:
+            type: array
+            items:
+              type: string
+        - name: category_type_id
+          in: query
+          description: Filter by category type ID
+          required: false
+          schema:
+            type: string
+        - name: tag_id
+          in: query
+          description: Filter by tag ID (multiple values allowed)
+          required: false
+          explode: true
+          schema:
+            type: array
+            items:
+              type: string
+        - name: group_by
+          in: query
+          description: Group trend data by category or status
+          required: true
+          schema:
+            type: string
+            enum:
+              - category
+              - status
+            x-enumNames:
+              - TaskTrendGroupByCategory
+              - TaskTrendGroupByStatus
+        - name: interval
+          in: query
+          description: Time interval for trend buckets
+          required: false
+          schema:
+            type: string
+            enum:
+              - 1week
+              - 2week
+              - month
+            default: 2week
+            x-enumNames:
+              - TaskTrendInterval1Week
+              - TaskTrendInterval2Week
+              - TaskTrendIntervalMonth
+        - name: from
+          in: query
+          description: Start date for trend range (YYYY-MM-DD, inclusive)
+          required: false
+          schema:
+            type: string
+            format: date
+        - name: to
+          in: query
+          description: End date for trend range (YYYY-MM-DD, inclusive)
+          required: false
+          schema:
+            type: string
+            format: date
+      responses:
+        "200":
+          description: Task completion trend data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TaskCompletionTrend"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /tasks/available-tags:
+    get:
+      tags:
+        - tasks
+      summary: Get available tags for tasks matching filters
+      operationId: getTaskAvailableTags
+      parameters:
+        - name: robot_type
+          in: query
+          description: Filter by robot type (multiple values allowed)
+          required: false
+          explode: true
+          schema:
+            type: array
+            items:
+              type: string
+        - name: category_type_id
+          in: query
+          description: Filter by category type ID
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Available tags
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/TaskTag"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /tasks/export:
+    get:
+      tags:
+        - tasks
+      summary: Export tasks as CSV
+      description: |
+        Exports tasks matching the given filters as a UTF-8 CSV file.
+        Maximum 5,000 rows; apply filters to reduce the result set if exceeded.
+      operationId: exportTasks
+      parameters:
+        - name: status
+          in: query
+          required: false
+          explode: true
+          schema:
+            type: array
+            items:
+              $ref: "#/components/schemas/TaskStatus"
+        - name: priority
+          in: query
+          required: false
+          explode: true
+          schema:
+            type: array
+            items:
+              $ref: "#/components/schemas/TaskPriority"
+        - name: difficulty
+          in: query
+          required: false
+          explode: true
+          schema:
+            type: array
+            items:
+              $ref: "#/components/schemas/TaskDifficulty"
+        - name: robot_type
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: CSV file containing matching tasks
+          content:
+            text/csv:
+              schema:
+                type: string
+                format: binary
+          headers:
+            Content-Disposition:
+              schema:
+                type: string
+              example: 'attachment; filename="tasks_export.csv"'
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /tasks/import/validate:
+    post:
+      tags:
+        - tasks
+      summary: Validate CSV for task import
+      description: |
+        Validates a CSV string for task import. Returns a preview of valid rows,
+        duplicate rows (by name), and rows with errors.
+      operationId: validateTaskImport
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TaskImportRequest"
+      responses:
+        "200":
+          description: Validation result with preview
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TaskImportValidationResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /tasks/import:
+    post:
+      tags:
+        - tasks
+      summary: Import tasks from CSV
+      description: |
+        Imports tasks from a CSV string. Duplicate rows (by name) are skipped.
+        Each imported task gets an initial v1.0.0 version created automatically.
+      operationId: importTasks
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TaskImportRequest"
+      responses:
+        "200":
+          description: Import result report
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TaskImportResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /tasks/{taskId}:
+    parameters:
+      - name: taskId
+        in: path
+        description: Task ID
+        required: true
+        schema:
+          type: string
+    get:
+      tags:
+        - tasks
+      summary: Get task details
+      operationId: getTaskById
+      responses:
+        "200":
+          description: Task info
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Task"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+    put:
+      tags:
+        - tasks
+      summary: Update task
+      operationId: updateTaskById
+      requestBody:
+        description: Data for the task to update
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TaskUpdate"
+      responses:
+        "200":
+          description: Task updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Task"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+    delete:
+      tags:
+        - tasks
+      summary: Delete task
+      operationId: deleteTaskById
+      responses:
+        "204":
+          description: Task deleted successfully (no content)
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /task-category-types:
+    get:
+      tags:
+        - tasks
+      summary: List task category types
+      operationId: listTaskCategoryTypes
+      responses:
+        "200":
+          description: Task category type list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/TaskCategoryType"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /task-tags:
+    get:
+      tags:
+        - tasks
+      summary: List task tags
+      operationId: listTaskTags
+      parameters:
+        - name: category_type_id
+          in: query
+          description: Filter by category type ID
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Task tag list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/TaskTag"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+    post:
+      tags:
+        - tasks
+      summary: Create task tag
+      operationId: createTaskTag
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TaskTagCreate"
+      responses:
+        "201":
+          description: Task tag created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TaskTag"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /tasks/{taskId}/versions:
+    parameters:
+      - name: taskId
+        in: path
+        description: Task ID
+        required: true
+        schema:
+          type: string
+    get:
+      tags:
+        - tasks
+      summary: List task versions
+      operationId: listTaskVersions
+      responses:
+        "200":
+          description: Task versions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/TaskVersion"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+    post:
+      tags:
+        - tasks
+      summary: Create a new task version
+      operationId: createTaskVersion
+      requestBody:
+        description: Data for creating a new task version
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TaskVersionCreate"
+      responses:
+        "201":
+          description: Task version created successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TaskVersion"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /tasks/{taskId}/versions/{versionId}:
+    parameters:
+      - name: taskId
+        in: path
+        description: Task ID
+        required: true
+        schema:
+          type: string
+      - name: versionId
+        in: path
+        description: Task Version ID
+        required: true
+        schema:
+          type: string
+    patch:
+      tags:
+        - tasks
+      summary: Update a task version
+      operationId: updateTaskVersion
+      requestBody:
+        description: Fields to update on the task version
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TaskVersionUpdate"
+      responses:
+        "200":
+          description: Task version updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TaskVersion"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /tasks/{taskId}/versions/{versionId}/approve:
+    parameters:
+      - name: taskId
+        in: path
+        description: Task ID
+        required: true
+        schema:
+          type: string
+      - name: versionId
+        in: path
+        description: Task Version ID
+        required: true
+        schema:
+          type: string
+    post:
+      tags:
+        - tasks
+      summary: Approve a task version
+      description: Approve a draft task version, making it the active version for data collection
+      operationId: approveTaskVersion
+      responses:
+        "200":
+          description: Task version approved successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TaskVersion"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /tasks/{taskId}/versions/{versionId}/parameters:
+    parameters:
+      - name: taskId
+        in: path
+        description: Task ID
+        required: true
+        schema:
+          type: string
+      - name: versionId
+        in: path
+        description: Task Version ID
+        required: true
+        schema:
+          type: string
+    put:
+      tags:
+        - tasks
+      summary: Update parameters for a draft task version
+      description: Replace the parameter definitions on a draft task version. Fails if the version is already approved.
+      operationId: updateTaskVersionParameters
+      requestBody:
+        description: New parameter definitions
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TaskVersionParametersUpdate"
+      responses:
+        "200":
+          description: Parameters updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TaskVersion"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  # === Sub Task API ===
+  /sub-tasks:
+    get:
+      tags:
+        - sub-tasks
+      summary: List sub-tasks (supports search and filtering)
+      operationId: listSubTasks
+      parameters:
+        - name: limit
+          in: query
+          description: Items per page
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 50
+        - name: page
+          in: query
+          description: Page number
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: task_id
+          in: query
+          description: Filter by task ID
+          required: false
+          schema:
+            type: string
+        - name: task_version_id
+          in: query
+          description: Filter by specific task version ID (takes precedence over task_id)
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Sub-task list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/SubTask"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+    post:
+      tags:
+        - sub-tasks
+      summary: Create sub-task
+      operationId: createSubTask
+      requestBody:
+        description: Data for the sub-task to create
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SubTaskCreate"
+      responses:
+        "201":
+          description: Sub-task created successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SubTask"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+  /sub-tasks/reorder:
+    post:
+      tags:
+        - sub-tasks
+      summary: Reorder sub-tasks
+      description: Reorder sub-tasks by providing an ordered list of sub-task IDs. The order_index of each sub-task will be updated to match the position in the array.
+      operationId: reorderSubTasks
+      requestBody:
+        description: Ordered list of sub-task IDs
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SubTaskReorder"
+      responses:
+        "200":
+          description: Sub-tasks reordered successfully
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/SubTask"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+  /sub-tasks/{subtaskId}:
+    parameters:
+      - name: subtaskId
+        in: path
+        description: Sub-task ID
+        required: true
+        schema:
+          type: string
+    get:
+      tags:
+        - sub-tasks
+      summary: Get sub-task details
+      operationId: getSubTaskById
+      responses:
+        "200":
+          description: Sub-task info
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SubTask"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+    put:
+      tags:
+        - sub-tasks
+      summary: Update sub-task
+      operationId: updateSubTaskById
+      requestBody:
+        description: Data for the sub-task to update
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SubTaskUpdate"
+      responses:
+        "200":
+          description: Sub-task updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SubTask"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+    delete:
+      tags:
+        - sub-tasks
+      summary: Delete sub-task
+      operationId: deleteSubTaskById
+      responses:
+        "204":
+          description: Sub-task deleted successfully (no content)
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+  /sub-tasks/{subtaskId}/complete:
+    parameters:
+      - name: subtaskId
+        in: path
+        description: Sub-task ID
+        required: true
+        schema:
+          type: string
+    post:
+      tags:
+        - sub-tasks
+      summary: Report sub-task completion
+      operationId: completeSubTask
+      responses:
+        "200":
+          description: Completion reported successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SubTask"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  # === Episode API ===
+  /episodes/export:
+    get:
+      tags:
+        - episodes
+      summary: Export episodes as CSV
+      description: |
+        Exports episodes matching the given filters as a UTF-8 CSV file.
+        Maximum 30,000 rows. If exceeded, a 400 error is returned — apply filters to reduce the result set.
+      operationId: exportEpisodes
+      parameters:
+        - name: task_id
+          in: query
+          description: Filter by task ID
+          required: false
+          schema:
+            type: string
+        - name: task_version_id
+          in: query
+          description: Filter by task version ID
+          required: false
+          schema:
+            type: string
+        - name: robot_id
+          in: query
+          description: Filter by robot ID
+          required: false
+          schema:
+            type: string
+        - name: user_id
+          in: query
+          description: Filter by operator user ID
+          required: false
+          schema:
+            type: string
+        - name: status
+          in: query
+          description: Filter by episode status (multiple values allowed)
+          required: false
+          explode: true
+          schema:
+            type: array
+            items:
+              $ref: "#/components/schemas/EpisodeCollectionStatus"
+        - name: started_at_from
+          in: query
+          description: Filter by started_at (inclusive lower bound, ISO 8601 date, e.g. 2025-01-31)
+          required: false
+          schema:
+            type: string
+            format: date
+        - name: started_at_to
+          in: query
+          description: Filter by started_at (inclusive upper bound, ISO 8601 date, e.g. 2025-01-31)
+          required: false
+          schema:
+            type: string
+            format: date
+      responses:
+        "200":
+          description: CSV file containing matching episodes
+          content:
+            text/csv:
+              schema:
+                type: string
+                format: binary
+          headers:
+            Content-Disposition:
+              schema:
+                type: string
+              example: 'attachment; filename="episodes_export.csv"'
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /episodes:
+    get:
+      tags:
+        - episodes
+      summary: List episodes (supports search and filtering)
+      operationId: listEpisodes
+      parameters:
+        - name: task_id
+          in: query
+          description: Filter by task ID
+          required: false
+          schema:
+            type: string
+        - name: task_version_id
+          in: query
+          description: Filter by task version ID
+          required: false
+          schema:
+            type: string
+        - name: robot_id
+          in: query
+          description: Filter by robot ID
+          required: false
+          schema:
+            type: string
+        - name: user_id
+          in: query
+          description: Filter by operator user ID
+          required: false
+          schema:
+            type: string
+        - name: status
+          in: query
+          description: Filter by episode status
+          required: false
+          explode: true
+          schema:
+            type: array
+            items:
+              $ref: "#/components/schemas/EpisodeCollectionStatus"
+        - name: started_at_from
+          in: query
+          description: Filter by started_at (inclusive lower bound, ISO 8601 date, e.g. 2025-01-31)
+          required: false
+          schema:
+            type: string
+            format: date
+        - name: started_at_to
+          in: query
+          description: Filter by started_at (inclusive upper bound, ISO 8601 date, e.g. 2025-01-31)
+          required: false
+          schema:
+            type: string
+            format: date
+        - name: sort_by
+          in: query
+          description: Column to sort by
+          required: false
+          schema:
+            type: string
+            enum:
+              - task
+              - robot
+              - recorded_by
+              - started_at
+              - ended_at
+              - error
+            x-enumNames:
+              - EpisodeSortByTask
+              - EpisodeSortByRobot
+              - EpisodeSortByRecordedBy
+              - EpisodeSortByStartedAt
+              - EpisodeSortByEndedAt
+              - EpisodeSortByError
+        - name: sort_order
+          in: query
+          description: Sort direction
+          required: false
+          schema:
+            type: string
+            enum:
+              - asc
+              - desc
+            x-enumNames:
+              - EpisodeSortOrderAsc
+              - EpisodeSortOrderDesc
+        - name: page
+          in: query
+          description: Page number (1-based)
+          required: false
+          schema:
+            type: integer
+        - name: limit
+          in: query
+          description: Items per page
+          required: false
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Episode list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EpisodeListResponse"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+    post:
+      tags:
+        - episodes
+      summary: Create episode
+      operationId: createEpisode
+      requestBody:
+        description: Data for the episode to create
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EpisodeCreate"
+      responses:
+        "201":
+          description: Episode created successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Episode"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+  /episodes/bulk:
+    post:
+      tags:
+        - episodes
+      summary: Create episodes in bulk
+      operationId: createEpisodesBulk
+      requestBody:
+        description: Data for episodes to create in bulk
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EpisodeBulkCreate"
+      responses:
+        "201":
+          description: Episodes created successfully
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Episode"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+  /episodes/{episodeId}:
+    parameters:
+      - name: episodeId
+        in: path
+        description: Episode ID
+        required: true
+        schema:
+          type: string
+    get:
+      tags:
+        - episodes
+      summary: Get episode details
+      operationId: getEpisodeById
+      responses:
+        "200":
+          description: Episode info
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Episode"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+    put:
+      tags:
+        - episodes
+      summary: Update episode
+      operationId: updateEpisodeById
+      requestBody:
+        description: Data for the episode to update
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EpisodeUpdate"
+      responses:
+        "200":
+          description: Episode updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Episode"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+    delete:
+      tags:
+        - episodes
+      summary: Delete episode
+      operationId: deleteEpisodeById
+      responses:
+        "204":
+          description: Episode deleted successfully (no content)
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /episodes/{episodeId}/recordings:
+    parameters:
+      - name: episodeId
+        in: path
+        description: Episode ID
+        required: true
+        schema:
+          type: string
+    get:
+      tags:
+        - episodes
+      summary: Get presigned URLs for episode recordings
+      operationId: getEpisodeRecordings
+      responses:
+        "200":
+          description: Episode recording URLs
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EpisodeRecordingsResponse"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+  /episodes/{episodeId}/stats:
+    parameters:
+      - name: episodeId
+        in: path
+        description: Episode ID
+        required: true
+        schema:
+          type: string
+    get:
+      tags:
+        - episodes
+      summary: Get statistics for episode recordings
+      operationId: getEpisodeStats
+      responses:
+        "200":
+          description: Episode statistics
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EpisodeStatsResponse"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+  /episodes/{episodeId}/grades:
+    parameters:
+      - name: episodeId
+        in: path
+        description: Episode ID
+        required: true
+        schema:
+          type: string
+    get:
+      tags:
+        - episodes
+      summary: List all grades left on the episode (paginated)
+      operationId: listEpisodeGrades
+      parameters:
+        - name: page
+          in: query
+          description: Page number
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: limit
+          in: query
+          description: Items per page
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 1000
+            default: 20
+      responses:
+        "200":
+          description: Paginated list of grades for the episode
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EpisodeGradeListResponse"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+  /episodes/{episodeId}/grades/me:
+    parameters:
+      - name: episodeId
+        in: path
+        description: Episode ID
+        required: true
+        schema:
+          type: string
+    get:
+      tags:
+        - episodes
+      summary: Get the current user's grade for the episode
+      operationId: getMyEpisodeGrade
+      responses:
+        "200":
+          description: The current user's grade for this episode
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EpisodeGrade"
+        "404":
+          description: Current user has not graded this episode yet
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+    put:
+      tags:
+        - episodes
+      summary: Create or update the current user's grade for the episode
+      operationId: updateMyEpisodeGrade
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EpisodeGradeUpdate"
+      responses:
+        "200":
+          description: The saved grade
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EpisodeGrade"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+  /users/{user_id}/sites:
+    put:
+      tags:
+        - users
+      summary: Update user sites
+      description: Assign sites to a user (admin only)
+      operationId: updateUserSites
+      parameters:
+        - name: user_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UserSitesUpdateRequest"
+      responses:
+        "200":
+          description: Updated user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  # === Site API ===
+  /sites:
+    get:
+      tags:
+        - sites
+      summary: List sites
+      operationId: listSites
+      parameters:
+        - name: page
+          in: query
+          description: Page number (1-based)
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: limit
+          in: query
+          description: Items per page
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 1000
+            default: 20
+        - name: search
+          in: query
+          description: Search by name (case-insensitive partial match)
+          required: false
+          schema:
+            type: string
+        - name: organization_id
+          in: query
+          description: Filter by organization ID
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Site list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SiteListResponse"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+    post:
+      tags:
+        - sites
+      summary: Create site
+      operationId: createSite
+      requestBody:
+        description: Data for the site to create
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SiteCreate"
+      responses:
+        "201":
+          description: Site created successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Site"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+  /sites/{siteId}:
+    parameters:
+      - name: siteId
+        in: path
+        description: Site ID
+        required: true
+        schema:
+          type: string
+    get:
+      tags:
+        - sites
+      summary: Get site details
+      operationId: getSiteById
+      responses:
+        "200":
+          description: Site info
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Site"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+    put:
+      tags:
+        - sites
+      summary: Update site
+      operationId: updateSiteById
+      requestBody:
+        description: Data for the site to update
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SiteUpdate"
+      responses:
+        "200":
+          description: Site updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Site"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+    delete:
+      tags:
+        - sites
+      summary: Delete site
+      operationId: deleteSiteById
+      responses:
+        "204":
+          description: Site deleted successfully (no content)
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  # === Location API (new) ===
+  /locations:
+    get:
+      tags:
+        - locations
+      summary: List locations
+      operationId: listLocations
+      parameters:
+        - name: page
+          in: query
+          description: Page number (1-based)
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: limit
+          in: query
+          description: Items per page
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 1000
+            default: 20
+        - name: search
+          in: query
+          description: Search by name (case-insensitive partial match)
+          required: false
+          schema:
+            type: string
+        - name: site_id
+          in: query
+          description: Filter by site ID
+          required: false
+          schema:
+            type: string
+        - name: sort_by
+          in: query
+          description: Column to sort by
+          required: false
+          schema:
+            type: string
+            enum:
+              - name
+            x-enumNames:
+              - LocationSortByName
+        - name: sort_order
+          in: query
+          description: Sort direction
+          required: false
+          schema:
+            type: string
+            enum:
+              - asc
+              - desc
+            x-enumNames:
+              - LocationSortOrderAsc
+              - LocationSortOrderDesc
+      responses:
+        "200":
+          description: Location list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LocationListResponse"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+    post:
+      tags:
+        - locations
+      summary: Create location
+      operationId: createLocation
+      requestBody:
+        description: Data for the location to create
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LocationCreate"
+      responses:
+        "201":
+          description: Location created successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Location"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+  /locations/{locationId}:
+    parameters:
+      - name: locationId
+        in: path
+        description: Location ID
+        required: true
+        schema:
+          type: string
+    get:
+      tags:
+        - locations
+      summary: Get location details
+      operationId: getLocationById
+      responses:
+        "200":
+          description: Location info
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Location"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+    put:
+      tags:
+        - locations
+      summary: Update location
+      operationId: updateLocationById
+      requestBody:
+        description: Data for the location to update
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LocationUpdate"
+      responses:
+        "200":
+          description: Location updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Location"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+    delete:
+      tags:
+        - locations
+      summary: Delete location
+      operationId: deleteLocationById
+      responses:
+        "204":
+          description: Location deleted successfully (no content)
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /robot/episodes/{episodeId}:
+    parameters:
+      - name: episodeId
+        in: path
+        description: Episode ID
+        required: true
+        schema:
+          type: string
+    get:
+      tags:
+        - robots
+      summary: Get episode details
+      description: Retrieve episode details for robot access
+      operationId: getRobotEpisodeById
+      responses:
+        "200":
+          description: Episode info
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Episode"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /robot/episodes/{episodeId}/start:
+    parameters:
+      - name: episodeId
+        in: path
+        description: Episode ID
+        required: true
+        schema:
+          type: string
+    post:
+      tags:
+        - robots
+      summary: Start episode recording
+      description: Start recording for the specified episode
+      operationId: startRobotEpisode
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EpisodeActionRequest"
+      responses:
+        "200":
+          description: Episode started successfully
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /robot/episodes/{episodeId}/finish:
+    parameters:
+      - name: episodeId
+        in: path
+        description: Episode ID
+        required: true
+        schema:
+          type: string
+    post:
+      tags:
+        - robots
+      summary: Finish episode recording
+      description: Finish recording for the specified episode
+      operationId: finishRobotEpisode
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EpisodeActionRequest"
+      responses:
+        "200":
+          description: Episode finished successfully
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /robot/episodes/{episodeId}/cancel:
+    parameters:
+      - name: episodeId
+        in: path
+        description: Episode ID
+        required: true
+        schema:
+          type: string
+    post:
+      tags:
+        - robots
+      summary: Cancel episode recording
+      description: Cancel recording for the specified episode
+      operationId: cancelRobotEpisode
+      responses:
+        "200":
+          description: Episode cancelled successfully
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /robot/episodes/{episodeId}/subtasks/{subtaskId}/complete:
+    parameters:
+      - name: episodeId
+        in: path
+        description: Episode ID
+        required: true
+        schema:
+          type: string
+      - name: subtaskId
+        in: path
+        description: Episode SubTask ID (episode_sub_task.id_natural)
+        required: true
+        schema:
+          type: string
+    post:
+      tags:
+        - robots
+      summary: Complete subtask
+      description: Mark subtask as completed
+      operationId: completeRobotSubTask
+      responses:
+        "200":
+          description: Subtask completed successfully
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /robot/episodes/{episodeId}/subtasks/{subtaskId}/skip:
+    parameters:
+      - name: episodeId
+        in: path
+        description: Episode ID
+        required: true
+        schema:
+          type: string
+      - name: subtaskId
+        in: path
+        description: Episode SubTask ID (episode_sub_task.id_natural)
+        required: true
+        schema:
+          type: string
+    post:
+      tags:
+        - robots
+      summary: Skip subtask
+      description: Skip the specified subtask
+      operationId: skipRobotSubTask
+      responses:
+        "200":
+          description: Subtask skipped successfully
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /robot/episodes/{episodeId}/subtasks/{subtaskId}/executions:
+    parameters:
+      - name: episodeId
+        in: path
+        description: Episode ID
+        required: true
+        schema:
+          type: string
+      - name: subtaskId
+        in: path
+        description: Episode SubTask ID (episode_sub_task.id_natural)
+        required: true
+        schema:
+          type: string
+    post:
+      tags:
+        - robots
+      summary: Create execution
+      description: Create a new execution for the specified subtask
+      operationId: createRobotExecution
+      responses:
+        "201":
+          description: Execution created successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ExecutionCreateResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /robot/episodes/{episodeId}/subtasks/{subtaskId}/executions/{executionId}/start:
+    parameters:
+      - name: episodeId
+        in: path
+        description: Episode ID
+        required: true
+        schema:
+          type: string
+      - name: subtaskId
+        in: path
+        description: Episode SubTask ID (episode_sub_task.id_natural)
+        required: true
+        schema:
+          type: string
+      - name: executionId
+        in: path
+        description: Execution ID
+        required: true
+        schema:
+          type: string
+    post:
+      tags:
+        - robots
+      summary: Start execution
+      description: Start the specified execution
+      operationId: startRobotExecution
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ExecutionActionRequest"
+      responses:
+        "200":
+          description: Execution started successfully
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /robot/episodes/{episodeId}/subtasks/{subtaskId}/executions/{executionId}/finish:
+    parameters:
+      - name: episodeId
+        in: path
+        description: Episode ID
+        required: true
+        schema:
+          type: string
+      - name: subtaskId
+        in: path
+        description: Episode SubTask ID (episode_sub_task.id_natural)
+        required: true
+        schema:
+          type: string
+      - name: executionId
+        in: path
+        description: Execution ID
+        required: true
+        schema:
+          type: string
+    post:
+      tags:
+        - robots
+      summary: Finish execution
+      description: Finish the specified execution
+      operationId: finishRobotExecution
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ExecutionActionRequest"
+      responses:
+        "200":
+          description: Execution finished successfully
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /robot/episodes/{episodeId}/subtasks/{subtaskId}/executions/{executionId}/cancel:
+    parameters:
+      - name: episodeId
+        in: path
+        description: Episode ID
+        required: true
+        schema:
+          type: string
+      - name: subtaskId
+        in: path
+        description: Episode SubTask ID (episode_sub_task.id_natural)
+        required: true
+        schema:
+          type: string
+      - name: executionId
+        in: path
+        description: Execution ID
+        required: true
+        schema:
+          type: string
+    post:
+      tags:
+        - robots
+      summary: Cancel execution
+      description: Cancel the specified execution
+      operationId: cancelRobotExecution
+      responses:
+        "200":
+          description: Execution cancelled successfully
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /robot/status:
+    put:
+      tags:
+        - robots
+      summary: Update robot status
+      description: Update the status and metrics for a robot
+      operationId: updateRobotStatus
+      requestBody:
+        description: Robot status update payload
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RobotStatusUpdateRequest"
+      responses:
+        "200":
+          description: Robot status updated successfully
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /robot/episodes:
+    get:
+      tags:
+        - robots
+      summary: List episodes assigned to the robot
+      description: Retrieve queued (ready) episodes assigned to the currently authenticated robot
+      operationId: listRobotEpisodes
+      responses:
+        "200":
+          description: Episode list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Episode"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /robot/episodes/repeat-last:
+    post:
+      tags:
+        - robots
+      summary: Repeat last task
+      description: Create a new episode for the same task as the robot's most recently completed or cancelled episode
+      operationId: repeatLastRobotEpisode
+      responses:
+        "201":
+          description: New episode created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Episode"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /robot/me:
+    get:
+      tags:
+        - robots
+      summary: Get current robot profile
+      description: Retrieve the profile of the currently authenticated robot
+      operationId: getRobotMe
+      responses:
+        "200":
+          description: Robot info
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Robot"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  # === Reports API ===
+  /reports/operator-yield/export:
+    get:
+      tags:
+        - reports
+      summary: Export operator yield report as CSV
+      description: |
+        Exports per-operator, per-task daily yield report as a UTF-8 CSV file.
+
+        One row per (date × operator × task). Columns include working window,
+        non-working / discarded / collected minutes, EP count and yield ratio.
+
+        NOTE: Cleansing-related filtering is not yet implemented. As a result,
+        "discarded data" only includes Cancel episodes (not cleansed-out data),
+        and "collected data" includes all Completed episodes (no quality filter).
+        Working time and non-working time are unaffected by cleansing.
+
+        Maximum 30,000 rows. If exceeded, a 400 error is returned — apply filters to reduce the result set.
+      operationId: exportOperatorYield
+      parameters:
+        - name: date_from
+          in: query
+          description: Inclusive lower bound of the working date (JST, ISO 8601 date, e.g. 2026-04-01).
+          required: true
+          schema:
+            type: string
+            format: date
+        - name: date_to
+          in: query
+          description: Inclusive upper bound of the working date (JST, ISO 8601 date, e.g. 2026-04-30).
+          required: true
+          schema:
+            type: string
+            format: date
+        - name: location_id
+          in: query
+          description: Filter by location ID
+          required: false
+          schema:
+            type: string
+        - name: task_id
+          in: query
+          description: Filter by task ID
+          required: false
+          schema:
+            type: string
+        - name: user_id
+          in: query
+          description: Filter by operator user ID (matches recorded_by, falling back to user_id)
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: CSV file containing operator yield rows
+          content:
+            text/csv:
+              schema:
+                type: string
+                format: binary
+          headers:
+            Content-Disposition:
+              schema:
+                type: string
+              example: 'attachment; filename="operator_yield_export_20260430.csv"'
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  # === API Keys (admin-only CRUD) ===
+  /api-keys:
+    get:
+      tags:
+        - api-keys
+      summary: List API keys
+      description: List API keys in the caller's organization. Admin only.
+      operationId: listApiKeys
+      parameters:
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 1000
+            default: 50
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: robot_id
+          in: query
+          description: Filter by robot ID
+          required: false
+          schema:
+            type: string
+        - name: user_id
+          in: query
+          description: Filter by owner user ID
+          required: false
+          schema:
+            type: string
+        - name: include_revoked
+          in: query
+          description: Include revoked keys in the response (default false)
+          required: false
+          schema:
+            type: boolean
+            default: false
+      responses:
+        "200":
+          description: API key list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiKeyListResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+    post:
+      tags:
+        - api-keys
+      summary: Create API key
+      description: |
+        Create a new API key for a robot in the caller's organization. The raw
+        key is returned exactly once in the response and cannot be retrieved
+        afterwards.
+      operationId: createApiKey
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ApiKeyCreateRequest"
+      responses:
+        "201":
+          description: API key created successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiKeyCreateResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+  /api-keys/{api_key_id}:
+    parameters:
+      - name: api_key_id
+        in: path
+        description: API key ID (UUID, id_natural)
+        required: true
+        schema:
+          type: string
+    get:
+      tags:
+        - api-keys
+      summary: Get API key
+      operationId: getApiKey
+      responses:
+        "200":
+          description: API key
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiKeyResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+    patch:
+      tags:
+        - api-keys
+      summary: Update API key
+      description: |
+        Update name and/or expires_at on an API key. The robot_id binding is
+        immutable — to change it, revoke the key and issue a new one.
+      operationId: updateApiKey
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ApiKeyUpdateRequest"
+      responses:
+        "200":
+          description: API key updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiKeyResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+    delete:
+      tags:
+        - api-keys
+      summary: Revoke API key
+      description: Soft-delete the key by setting revoked_at. Idempotent.
+      operationId: revokeApiKey
+      responses:
+        "204":
+          description: API key revoked
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+
+components:
+  responses:
+    BadRequest:
+      description: Bad request
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    Unauthorized:
+      description: Unauthorized
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    Forbidden:
+      description: Forbidden
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    NotFound:
+      description: Not found
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    MethodNotAllowed:
+      description: Method not allowed
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    NotAcceptable:
+      description: Not acceptable
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    RequestTimeout:
+      description: Request timeout
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    Conflict:
+      description: Conflict
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    InternalServerError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+  schemas:
+    UserRole:
+      type: integer
+      description: |-
+        User role enum
+        0: Admin
+        1: Data Engineer
+        2: Manager
+        3: Operator
+        4: Viewer
+      enum:
+        - 0
+        - 1
+        - 2
+        - 3
+        - 4
+      x-enumNames:
+        - Admin
+        - DataEngineer
+        - Manager
+        - Operator
+        - Viewer
+    RobotStatus:
+      type: integer
+      description: |-
+        0: Online
+        1: Busy
+        2: Offline
+        3: Faulted
+        4: Maintenance
+        5: Ready
+      enum:
+        - 0
+        - 1
+        - 2
+        - 3
+        - 4
+        - 5
+      x-enumNames:
+        - Online
+        - Busy
+        - Offline
+        - Faulted
+        - Maintenance
+        - Ready
+
+    LeaderStatus:
+      type: integer
+      description: |-
+        0: Ready
+        1: Faulted
+        2: Maintenance
+      enum:
+        - 0
+        - 1
+        - 2
+      x-enumNames:
+        - LeaderReady
+        - LeaderFaulted
+        - LeaderMaintenance
+        - Ready
+    SubTaskStatus:
+      type: integer
+      description: |-
+        0: Ready - Subtask is ready to start
+        1: InProgress - Subtask is currently being executed
+        2: Failed - Subtask execution failed
+        3: Completed - Subtask was completed successfully
+      enum:
+        - 0
+        - 1
+        - 2
+        - 3
+      x-enumNames:
+        - Ready
+        - InProgress
+        - Failed
+        - Completed
+    ApprovalStatus:
+      type: integer
+      description: |-
+        0: Draft - Version is in draft state, editable
+        1: Approved - Version is approved, locked for data collection
+      enum:
+        - 0
+        - 1
+      x-enumNames:
+        - Draft
+        - Approved
+    TaskPriority:
+      type: integer
+      description: |-
+        0: Low
+        1: Normal
+        2: High
+        3: Urgent
+      enum:
+        - 0
+        - 1
+        - 2
+        - 3
+      x-enumNames:
+        - TaskPriorityLow
+        - TaskPriorityNormal
+        - TaskPriorityHigh
+        - TaskPriorityUrgent
+    TaskDifficulty:
+      type: integer
+      description: |-
+        0: S
+        1: A
+        2: B
+        3: C
+      enum:
+        - 0
+        - 1
+        - 2
+        - 3
+      x-enumNames:
+        - DifficultyS
+        - DifficultyA
+        - DifficultyB
+        - DifficultyC
+    TaskStatus:
+      type: integer
+      description: |-
+        0: Planning
+        1: Doing
+        2: Completed
+        3: Canceled
+      enum:
+        - 0
+        - 1
+        - 2
+        - 3
+      x-enumNames:
+        - TaskStatusPlanning
+        - TaskStatusDoing
+        - TaskStatusCompleted
+        - TaskStatusCanceled
+    EpisodeCollectionStatus:
+      type: integer
+      description: |-
+        0: Ready - Episode is ready to start data collection
+        1: Recording - Episode is currently being recorded
+        2: Cancel - Episode data collection was cancelled
+        3: Completed - Episode data collection was completed successfully
+      enum:
+        - 0
+        - 1
+        - 2
+        - 3
+      x-enumNames:
+        - Ready
+        - Recording
+        - Cancel
+        - Completed
+    EpisodeTaskResult:
+      type: integer
+      description: |-
+        0: Undetermined - Task result is not yet determined
+        1: Success - All subtasks succeeded
+        2: Failed - One or more subtasks failed
+      enum:
+        - 0
+        - 1
+        - 2
+      x-enumNames:
+        - Undetermined
+        - Success
+        - Failed
+    EpisodeUploadStatus:
+      type: integer
+      description: |-
+        0: Ready - Ready to upload
+        1: Uploading - Data upload in progress
+        2: Failed - Data upload failed
+        3: Completed - Data upload completed
+      enum:
+        - 0
+        - 1
+        - 2
+        - 3
+      x-enumNames:
+        - Ready
+        - Uploading
+        - Failed
+        - Completed
+    SubTaskCollectionStatus:
+      type: integer
+      description: |-
+        0: Ready - Subtask is ready to start
+        1: InProgress - Subtask is in progress
+        2: Completed - Subtask data collection completed
+        3: Skipped - Subtask was skipped
+        4: Cancelled - Subtask was cancelled
+      enum:
+        - 0
+        - 1
+        - 2
+        - 3
+        - 4
+      x-enumNames:
+        - SubTaskCollectionStatusReady
+        - SubTaskCollectionStatusInProgress
+        - SubTaskCollectionStatusCompleted
+        - SubTaskCollectionStatusSkipped
+        - SubTaskCollectionStatusCancelled
+    SubTaskTaskResult:
+      type: integer
+      description: |-
+        0: Undetermined - Task result is not yet determined
+        1: Success - Subtask execution was successful
+        2: Failed - Subtask execution failed
+      enum:
+        - 0
+        - 1
+        - 2
+      x-enumNames:
+        - SubTaskTaskResultUndetermined
+        - SubTaskTaskResultSuccess
+        - SubTaskTaskResultFailed
+    ExecutionStatus:
+      type: integer
+      description: |-
+        0: Ready - Execution is ready to start
+        1: Started - Execution has started
+        2: Cancelled - Execution was cancelled
+        3: Finished - Execution has finished
+      enum:
+        - 0
+        - 1
+        - 2
+        - 3
+      x-enumNames:
+        - Ready
+        - Started
+        - Cancelled
+        - Finished
+    EpisodeActionRequest:
+      type: object
+      description: Request body for episode actions (start, finish, cancel)
+      properties:
+        occurred_at:
+          type: string
+          format: date-time
+          description: Timestamp when the action occurred
+      required:
+        - occurred_at
+    ExecutionActionRequest:
+      type: object
+      description: Request body for execution actions (start, finish, cancel)
+      properties:
+        occurred_at:
+          type: string
+          format: date-time
+          description: Timestamp when the action occurred
+      required:
+        - occurred_at
+    SubTaskActionRequest:
+      type: object
+      description: Request body for subtask actions (complete, skip)
+      properties:
+        occurred_at:
+          type: string
+          format: date-time
+          description: Timestamp when the action occurred
+      required:
+        - occurred_at
+    ExecutionCreateResponse:
+      type: object
+      description: Response for execution creation
+      properties:
+        execution_id:
+          type: string
+          description: Created execution ID
+      required:
+        - execution_id
+    # === User schemas ===
+    LocationSummary:
+      type: object
+      properties:
+        location_id:
+          type: string
+          description: Location ID
+        name:
+          type: string
+          description: Location name
+      required:
+        - location_id
+        - name
+    SiteSummary:
+      type: object
+      properties:
+        site_id:
+          type: string
+          description: Site ID
+        name:
+          type: string
+          description: Site name
+      required:
+        - site_id
+        - name
+    UserResponse:
+      type: object
+      properties:
+        user_id:
+          type: string
+          description: User ID
+        email:
+          type: string
+          description: Email address
+        display_name:
+          type: string
+          description: Display name
+        role:
+          $ref: "#/components/schemas/UserRole"
+        created_at:
+          type: string
+          format: date-time
+          description: Created at
+        organization_id:
+          type: string
+          description: Organization ID
+        organization_name:
+          type: string
+          description: Organization display name
+        updated_at:
+          type: string
+          format: date-time
+          description: Updated at
+        locations:
+          type: array
+          items:
+            $ref: "#/components/schemas/LocationSummary"
+          description: Assigned locations
+        sites:
+          type: array
+          items:
+            $ref: "#/components/schemas/SiteSummary"
+          description: Assigned sites
+      required:
+        - user_id
+        - email
+        - display_name
+        - organization_id
+        - organization_name
+        - created_at
+        - locations
+        - sites
+    UserListResponse:
+      type: object
+      properties:
+        users:
+          type: array
+          items:
+            $ref: "#/components/schemas/UserResponse"
+        pagination:
+          $ref: "#/components/schemas/Pagination"
+        filter:
+          $ref: "#/components/schemas/UserFilter"
+      required:
+        - users
+        - pagination
+        - filter
+    UserCreateRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          description: Email address
+        display_name:
+          type: string
+          description: Display name
+        role:
+          $ref: "#/components/schemas/UserRole"
+        location_ids:
+          type: array
+          items:
+            type: string
+          description: Location IDs to assign
+        site_ids:
+          type: array
+          items:
+            type: string
+          description: Site IDs to assign
+      required:
+        - email
+        - display_name
+        - role
+    UserUpdateRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          description: Email address
+        display_name:
+          type: string
+          description: Display name
+    MeUpdateRequest:
+      type: object
+      description: |
+        Fields that an authenticated user is allowed to change on their own
+        profile. Restricted on purpose to a strict subset of UserUpdateRequest.
+      required:
+        - display_name
+      properties:
+        display_name:
+          type: string
+          minLength: 1
+          maxLength: 60
+          description: Display name
+    UserLocationsUpdateRequest:
+      type: object
+      required:
+        - location_ids
+      properties:
+        location_ids:
+          type: array
+          items:
+            type: string
+          description: Location IDs to assign
+    UserSitesUpdateRequest:
+      type: object
+      required:
+        - site_ids
+      properties:
+        site_ids:
+          type: array
+          items:
+            type: string
+          description: Site IDs to assign
+    UserRoleUpdateRequest:
+      type: object
+      properties:
+        role:
+          $ref: "#/components/schemas/UserRole"
+      required:
+        - role
+    UserFilter:
+      type: object
+      properties:
+        organization_id:
+          type: string
+          description: Organization ID filter
+        location_id:
+          type: string
+          description: Location ID filter
+        site_id:
+          type: string
+          description: Site ID filter
+    Pagination:
+      type: object
+      properties:
+        count:
+          type: integer
+          description: Total count
+        page:
+          type: integer
+          description: Current page number
+        limit:
+          type: integer
+          description: Items per page
+      required:
+        - count
+        - page
+        - limit
+    ApiKeyResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          description: API key ID (UUID)
+        name:
+          type: string
+        user_id:
+          type: string
+          description: Owner user ID
+        user_name:
+          type: string
+          description: Resolved owner user name (denormalized for UI display)
+        robot_id:
+          type: string
+          nullable: true
+          description: Bound robot ID (currently always set on issue)
+        robot_name:
+          type: string
+          nullable: true
+          description: Resolved bound robot name (denormalized for UI display). Null when robot_id is null.
+        organization_id:
+          type: string
+        key_hint:
+          type: string
+          description: Short hint shown in UI (first 4 + ... + last 4)
+        expires_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: Expiration timestamp, null means no expiry
+        last_used_at:
+          type: string
+          format: date-time
+          nullable: true
+        revoked_at:
+          type: string
+          format: date-time
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+      required:
+        - id
+        - name
+        - user_id
+        - user_name
+        - organization_id
+        - key_hint
+        - created_at
+        - updated_at
+    ApiKeyCreateRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 255
+        robot_id:
+          type: string
+          description: Robot ID to bind this key to
+        expires_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: Optional expiration. Omit or null for no expiry.
+      required:
+        - name
+        - robot_id
+    ApiKeyCreateResponse:
+      allOf:
+        - $ref: "#/components/schemas/ApiKeyResponse"
+        - type: object
+          properties:
+            key:
+              type: string
+              description: Raw API key. Returned only once at creation time — store it securely.
+          required:
+            - key
+    ApiKeyUpdateRequest:
+      type: object
+      description: |
+        Partial update. Provide only the fields to change. To clear the
+        expiration, pass `expires_at: null` together with `clear_expires_at: true`.
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 255
+        expires_at:
+          type: string
+          format: date-time
+          nullable: true
+        clear_expires_at:
+          type: boolean
+          description: When true, expires_at is set to NULL regardless of the expires_at value.
+    ApiKeyListResponse:
+      type: object
+      properties:
+        api_keys:
+          type: array
+          items:
+            $ref: "#/components/schemas/ApiKeyResponse"
+        pagination:
+          $ref: "#/components/schemas/Pagination"
+      required:
+        - api_keys
+        - pagination
+
+    EpisodeListResponse:
+      type: object
+      properties:
+        episodes:
+          type: array
+          items:
+            $ref: "#/components/schemas/Episode"
+        pagination:
+          $ref: "#/components/schemas/Pagination"
+      required:
+        - episodes
+        - pagination
+
+    RobotListResponse:
+      type: object
+      properties:
+        robots:
+          type: array
+          items:
+            $ref: "#/components/schemas/Robot"
+        pagination:
+          $ref: "#/components/schemas/Pagination"
+      required:
+        - robots
+        - pagination
+
+    TaskListResponse:
+      type: object
+      properties:
+        tasks:
+          type: array
+          items:
+            $ref: "#/components/schemas/Task"
+        pagination:
+          $ref: "#/components/schemas/Pagination"
+      required:
+        - tasks
+        - pagination
+
+    LocationListResponse:
+      type: object
+      properties:
+        locations:
+          type: array
+          items:
+            $ref: "#/components/schemas/Location"
+        pagination:
+          $ref: "#/components/schemas/Pagination"
+      required:
+        - locations
+        - pagination
+
+    # === Organization schemas ===
+    OrganizationResponse:
+      type: object
+      properties:
+        organization_id:
+          type: string
+          description: Organization ID
+        display_name:
+          type: string
+          description: Display name
+        description:
+          type: string
+          description: Description
+        created_at:
+          type: string
+          format: date-time
+          description: Created at
+        updated_at:
+          type: string
+          format: date-time
+          description: Updated at
+      required:
+        - organization_id
+        - display_name
+    OrganizationListResponse:
+      type: object
+      properties:
+        organizations:
+          type: array
+          items:
+            $ref: "#/components/schemas/OrganizationResponse"
+        pagination:
+          $ref: "#/components/schemas/Pagination"
+      required:
+        - organizations
+        - pagination
+    OrganizationCreateRequest:
+      type: object
+      properties:
+        display_name:
+          type: string
+          minLength: 2
+          maxLength: 100
+          description: Display name
+        description:
+          type: string
+          description: Description
+      required:
+        - display_name
+    OrganizationUpdateRequest:
+      type: object
+      properties:
+        display_name:
+          type: string
+          description: Display name
+        description:
+          type: string
+          description: Description
+
+    # === Permission schemas ===
+    Permission:
+      type: object
+      properties:
+        code:
+          type: string
+          description: "Permission code (e.g., 'task:read', 'asset:write')"
+      required:
+        - code
+    PermissionCreate:
+      type: object
+      properties:
+        code:
+          type: string
+          description: Permission code to grant
+      required:
+        - code
+    PermissionDelete:
+      type: object
+      properties:
+        code:
+          type: string
+          description: Permission code to delete
+      required:
+        - code
+
+    # === Robot schemas ===
+    Robot:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Robot ID
+        organization_id:
+          type: string
+          description: Organization ID
+        organization_name:
+          type: string
+          description: Organization display name
+        site_id:
+          type: string
+          description: Site ID
+        site_name:
+          type: string
+          description: Site display name
+        location_id:
+          type: string
+          description: Location ID
+        location_name:
+          type: string
+          description: Location display name
+        name:
+          type: string
+          description: Robot name
+        robot_type:
+          type: string
+          description: Robot type name
+        status:
+          $ref: "#/components/schemas/RobotStatus"
+        leader_status:
+          $ref: "#/components/schemas/LeaderStatus"
+          nullable: true
+          description: Leader component status (null if robot has no leader component)
+        consecutive_fault_days:
+          type: integer
+          nullable: true
+          description: Consecutive days since this robot entered Faulted status (null for non-Faulted)
+        leader_consecutive_fault_days:
+          type: integer
+          nullable: true
+          description: Consecutive days since leader status entered Faulted (null for non-Faulted)
+        leader_fault_started_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: Timestamp when leader status entered Faulted (null for non-Faulted)
+        battery_level:
+          type: integer
+          description: Battery level (0-100)
+        last_heartbeat_at:
+          type: string
+          format: date-time
+          description: Last heartbeat timestamp
+        offline_reason:
+          type: string
+          description: Reason why robot is offline
+        robot_config:
+          type: object
+          nullable: true
+          description: Robot configuration including camera settings (JSON)
+        active_episode_id:
+          type: string
+          description: Active Episode ID
+        active_user_id:
+          type: string
+          description: Active User ID
+        active_operator:
+          $ref: "#/components/schemas/RobotOperator"
+      required:
+        - id
+        - name
+    RobotCreate:
+      type: object
+      properties:
+        organization_id:
+          type: string
+          description: Organization ID
+        location_id:
+          type: string
+          description: Location ID
+        name:
+          type: string
+          description: Robot name
+        robot_type:
+          type: string
+          description: Robot type name
+        leader_status:
+          $ref: "#/components/schemas/LeaderStatus"
+          nullable: true
+          description: Leader component status (null if robot has no leader component)
+        robot_config:
+          type: object
+          nullable: true
+          description: Robot configuration including camera settings (JSON)
+      required:
+        - organization_id
+        - location_id
+        - name
+    RobotUpdate:
+      type: object
+      properties:
+        robot_id:
+          type: string
+          description: Robot ID
+        organization_id:
+          type: string
+          description: Organization ID
+        location_id:
+          type: string
+          description: Location ID
+        name:
+          type: string
+          description: Robot name
+        robot_type:
+          type: string
+          description: Robot type name
+        status:
+          $ref: "#/components/schemas/RobotStatus"
+        leader_status:
+          $ref: "#/components/schemas/LeaderStatus"
+          nullable: true
+          description: Leader component status (null if robot has no leader component)
+        battery_level:
+          type: integer
+          description: Battery level (0-100)
+        last_heartbeat_at:
+          type: string
+          format: date-time
+          description: Last heartbeat timestamp
+        offline_reason:
+          type: string
+          description: Reason why robot is offline
+        robot_config:
+          type: object
+          nullable: true
+          description: Robot configuration including camera settings (JSON)
+
+    # === Task schemas ===
+    TaskCategoryType:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Category type ID
+        slug:
+          type: string
+          description: Category type slug (e.g. basic_skill, application)
+        name:
+          type: string
+          description: Category type display name
+      required:
+        - id
+        - slug
+        - name
+
+    TaskTag:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Tag ID
+        name:
+          type: string
+          description: Tag name
+        category_type_id:
+          type: string
+          description: Category type ID
+        category_type_name:
+          type: string
+          description: Category type display name
+      required:
+        - id
+        - name
+        - category_type_id
+        - category_type_name
+
+    TaskTagCreate:
+      type: object
+      properties:
+        name:
+          type: string
+          description: Tag name
+        category_type_id:
+          type: string
+          description: Category type ID
+      required:
+        - name
+        - category_type_id
+
+    Task:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Task ID
+        name:
+          type: string
+          description: Task name
+        description:
+          type: string
+        version:
+          type: string
+          description: Current task version
+        version_display_name:
+          type: string
+          description: |
+            Resolved display name of the current task version. Falls back to
+            "{name} {version}" when the version has no display_name set.
+        manual_url:
+          type: string
+          description: URL for external manual (e.g. TeachMeBiz)
+        priority:
+          $ref: "#/components/schemas/TaskPriority"
+        difficulty:
+          $ref: "#/components/schemas/TaskDifficulty"
+        status:
+          $ref: "#/components/schemas/TaskStatus"
+        deadline:
+          type: string
+          format: date-time
+          description: Task completion deadline
+        robot_type:
+          type: string
+          description: Robot type name associated with this task
+        target_duration_seconds:
+          type: integer
+          description: Target data collection duration in seconds (from latest task version)
+        target_episode_count:
+          type: integer
+          description: Target episode count from current task version
+        actual_episode_count:
+          type: integer
+          description: Completed episode count from task version stats
+          readOnly: true
+        tags:
+          type: array
+          items:
+            $ref: "#/components/schemas/TaskTag"
+          description: Task tags
+      required:
+        - id
+        - name
+        - manual_url
+        - priority
+        - difficulty
+        - status
+        - deadline
+    TaskCreate:
+      type: object
+      properties:
+        organization_id:
+          type: string
+          description: Organization ID
+        name:
+          type: string
+          description: Task name
+        description:
+          type: string
+          description: Task description
+        manual_url:
+          type: string
+          description: URL for external manual (e.g. TeachMeBiz)
+        priority:
+          $ref: "#/components/schemas/TaskPriority"
+        difficulty:
+          $ref: "#/components/schemas/TaskDifficulty"
+        status:
+          $ref: "#/components/schemas/TaskStatus"
+        deadline:
+          type: string
+          format: date-time
+          description: Task completion deadline
+        robot_type:
+          type: string
+          description: Robot type name associated with this task
+        tag_ids:
+          type: array
+          items:
+            type: string
+          description: Tag IDs to assign
+      required:
+        - organization_id
+        - name
+        - manual_url
+        - priority
+        - difficulty
+        - status
+        - deadline
+
+    TaskUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+          description: Task name
+        description:
+          type: string
+          description: Task description
+        manual_url:
+          type: string
+          description: URL for external manual (e.g. TeachMeBiz)
+        priority:
+          $ref: "#/components/schemas/TaskPriority"
+        difficulty:
+          $ref: "#/components/schemas/TaskDifficulty"
+        status:
+          $ref: "#/components/schemas/TaskStatus"
+        deadline:
+          type: string
+          format: date-time
+          description: Task completion deadline
+        robot_type:
+          type: string
+          description: Robot type name associated with this task
+        tag_ids:
+          type: array
+          items:
+            type: string
+          description: Tag IDs to assign (replaces existing)
+
+    TaskVersion:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Task version ID
+        task_id:
+          type: string
+          description: Task ID
+        version:
+          type: string
+          description: Version string (e.g., v1.0.0)
+        display_name:
+          type: string
+          description: Optional human-readable label for this version. Null when unset.
+          maxLength: 100
+          nullable: true
+        is_current:
+          type: boolean
+          description: Whether this is the current (active) version
+        approval_status:
+          $ref: "#/components/schemas/ApprovalStatus"
+        parameters:
+          type: array
+          description: |
+            Template parameter definitions. Subtask names can use {key} placeholders
+            that are resolved per-episode. Example: [{"key": "arm", "values": ["Left", "Right"]}]
+          items:
+            $ref: "#/components/schemas/TaskVersionParameter"
+        created_at:
+          type: string
+          format: date-time
+          description: Created at
+        target_duration_seconds:
+          type: integer
+          description: Target data collection duration in seconds
+          minimum: 1
+        target_episode_count:
+          type: integer
+          description: Target number of episodes to collect
+          minimum: 1
+        target_duration_per_episode_seconds:
+          type: integer
+          description: Target data collection duration per episode in seconds
+          minimum: 1
+        actual_duration_seconds:
+          type: integer
+          description: Actual total collection duration in seconds (from batch aggregation)
+          readOnly: true
+        actual_episode_count:
+          type: integer
+          description: Actual number of completed episodes (from batch aggregation)
+          readOnly: true
+      required:
+        - id
+        - task_id
+        - version
+        - is_current
+        - approval_status
+        - created_at
+
+    TaskVersionCreate:
+      type: object
+      properties:
+        version:
+          type: string
+          description: New version string (e.g., v2.0.0)
+          minLength: 1
+          maxLength: 50
+        display_name:
+          type: string
+          description: Optional human-readable label for the new version
+          maxLength: 100
+        base_task_version_id:
+          type: string
+          description: Base task version ID to copy subtasks from
+          minLength: 1
+        target_duration_seconds:
+          type: integer
+          description: Target data collection duration in seconds
+          minimum: 1
+        target_episode_count:
+          type: integer
+          description: Target number of episodes to collect
+          minimum: 1
+        target_duration_per_episode_seconds:
+          type: integer
+          description: Target data collection duration per episode in seconds
+          minimum: 1
+        parameters:
+          type: array
+          description: |
+            Template parameter definitions. Subtask names can use {key} placeholders
+            that are resolved per-episode. Example: [{"key": "arm", "values": ["Left", "Right"]}]
+          items:
+            $ref: "#/components/schemas/TaskVersionParameter"
+      required:
+        - version
+        - base_task_version_id
+
+    TaskVersionUpdate:
+      type: object
+      properties:
+        display_name:
+          type: string
+          description: |
+            Updated display name. Pass an empty string to clear the existing
+            value. Omit the property to leave it unchanged.
+          maxLength: 100
+        target_duration_seconds:
+          type: integer
+          description: Target data collection duration in seconds
+          minimum: 1
+        target_episode_count:
+          type: integer
+          description: Target number of episodes to collect
+          minimum: 1
+        target_duration_per_episode_seconds:
+          type: integer
+          description: Target data collection duration per episode in seconds
+          minimum: 1
+
+    TaskVersionParametersUpdate:
+      type: object
+      properties:
+        parameters:
+          type: array
+          description: |
+            New parameter definitions replacing existing ones.
+            Subtask names can use {key} placeholders resolved per-episode.
+          items:
+            $ref: "#/components/schemas/TaskVersionParameter"
+      required:
+        - parameters
+
+    # === Sub-task schemas ===
+    SubTask:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Sub-task ID
+        status:
+          $ref: "#/components/schemas/SubTaskStatus"
+        name:
+          type: string
+          description: Sub-task name
+        description:
+          type: string
+          description: Sub-task description
+        target_duration_seconds:
+          type: integer
+          description: Target data collection duration in seconds
+          minimum: 1
+      required:
+        - id
+        - name
+    SubTaskCreate:
+      type: object
+      properties:
+        organization_id:
+          type: string
+          description: Organization ID
+        name:
+          type: string
+          description: Sub-task name
+        description:
+          type: string
+          description: Sub-task description
+        task_id:
+          type: string
+          description: Task ID
+        task_version_id:
+          type: string
+          description: Task Version ID (must be a draft version)
+        target_duration_seconds:
+          type: integer
+          description: Target data collection duration in seconds
+          minimum: 1
+      required:
+        - organization_id
+        - name
+        - task_id
+        - task_version_id
+    SubTaskUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+          description: Sub-task name
+        description:
+          type: string
+          description: Sub-task description
+        is_completed:
+          type: boolean
+          description: Completion flag
+        target_duration_seconds:
+          type: integer
+          description: Target data collection duration in seconds
+          minimum: 1
+
+    SubTaskReorder:
+      type: object
+      properties:
+        task_version_id:
+          type: string
+          description: Task Version ID (must be a draft version)
+        subtask_ids:
+          type: array
+          description: Ordered list of sub-task IDs. The position in the array determines the new order_index.
+          items:
+            type: string
+      required:
+        - task_version_id
+        - subtask_ids
+
+    # === Episode schemas ===
+    Episode:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Episode ID (natural UUID)
+        user_id:
+          type: string
+          description: User ID
+        location_id:
+          type: string
+          description: Location ID
+        robot_id:
+          type: string
+          description: Robot ID
+        task_id:
+          type: string
+          description: Task ID
+        task_name:
+          type: string
+          description: Task name
+        task_description:
+          type: string
+          description: Task description
+        task_version_id:
+          type: string
+          description: Task Version ID
+        task_version_display_name:
+          type: string
+          description: |
+            Resolved display name of the episode's task version. Server-resolved
+            with fallback to "{task_name} {version}" when display_name is unset.
+        status:
+          $ref: "#/components/schemas/EpisodeCollectionStatus"
+        error_details:
+          type: string
+          description: Error details
+        started_at:
+          type: string
+          format: date-time
+          description: Episode start time
+        ended_at:
+          type: string
+          format: date-time
+          description: Episode end time
+        created_at:
+          type: string
+          format: date-time
+          description: Episode creation time
+        recorded_by:
+          type: string
+          description: ID of the user who recorded this episode
+        parameter_values:
+          type: object
+          additionalProperties:
+            type: string
+          description: |
+            Resolved parameter values for this episode. Keys match the task
+            version's parameter definitions. Example: {"arm": "Left"}
+        subtasks:
+          type: array
+          description: List of subtasks with their latest execution status
+          items:
+            $ref: "#/components/schemas/EpisodeSubTask"
+        average_grade:
+          type: number
+          format: double
+          nullable: true
+          minimum: 0
+          maximum: 1
+          description: Average of all grades for this episode (null when there are no grades)
+        grade_count:
+          type: integer
+          minimum: 0
+          description: Total number of grades recorded for this episode
+      required:
+        - id
+        - user_id
+        - location_id
+        - robot_id
+        - task_id
+        - task_version_id
+        - status
+        - created_at
+    EpisodeGrade:
+      type: object
+      description: A single grader's rating of an episode
+      properties:
+        episode_id:
+          type: string
+          description: Episode ID (natural UUID)
+        user_id:
+          type: string
+          description: ID of the user who made this rating
+        user_name:
+          type: string
+          description: Display name of the user who made this rating
+        grade:
+          type: number
+          format: double
+          minimum: 0
+          maximum: 1
+          description: Quality score from 0.0 (worst) to 1.0 (best)
+        comment:
+          type: string
+          nullable: true
+          maxLength: 10000
+          description: Optional free-form note left by the grader
+        graded_at:
+          type: string
+          format: date-time
+          description: Timestamp of the most recent grade action (insert or update)
+        created_at:
+          type: string
+          format: date-time
+          description: When the grade row was first created
+        updated_at:
+          type: string
+          format: date-time
+          description: When the grade row was last modified for any reason
+      required:
+        - episode_id
+        - user_id
+        - user_name
+        - grade
+        - graded_at
+        - created_at
+    EpisodeGradeUpdate:
+      type: object
+      description: Payload for creating or updating the current user's grade for an episode
+      properties:
+        grade:
+          type: number
+          format: double
+          minimum: 0
+          maximum: 1
+          description: Quality score from 0.0 to 1.0
+        comment:
+          type: string
+          nullable: true
+          maxLength: 10000
+          description: Optional free-form note
+      required:
+        - grade
+    EpisodeGradeListResponse:
+      type: object
+      properties:
+        grades:
+          type: array
+          items:
+            $ref: "#/components/schemas/EpisodeGrade"
+        pagination:
+          $ref: "#/components/schemas/Pagination"
+      required:
+        - grades
+        - pagination
+    EpisodeCreate:
+      type: object
+      properties:
+        organization_id:
+          type: string
+          description: Organization ID
+        location_id:
+          type: string
+          description: Location ID
+        robot_id:
+          type: string
+          description: Robot ID
+        task_id:
+          type: string
+          description: Task ID
+        recorded_by:
+          type: string
+          description: ID of the user who will record this episode
+        task_version_id:
+          type: string
+          description: Task version ID. If not specified, the latest approved version is used.
+        parameter_values:
+          type: object
+          additionalProperties:
+            type: string
+          description: |
+            Resolved parameter values for this episode. Keys must match the task
+            version's parameter definitions. If omitted or partially provided,
+            missing values are randomly selected from the allowed set.
+            Example: {"arm": "Left"}
+      required:
+        - organization_id
+        - location_id
+        - robot_id
+        - task_id
+    EpisodeBulkCreate:
+      allOf:
+        - $ref: "#/components/schemas/EpisodeCreate"
+        - type: object
+          properties:
+            count:
+              type: integer
+              minimum: 1
+              maximum: 100
+              description: Number of episodes to create in one request
+          required:
+            - count
+    EpisodeUpdate:
+      type: object
+      properties:
+        start_time:
+          type: string
+          format: date-time
+          description: Episode start time
+        end_time:
+          type: string
+          format: date-time
+          description: Episode end time
+        status:
+          $ref: "#/components/schemas/EpisodeCollectionStatus"
+        error_details:
+          type: string
+          description: Error details
+        recorded_by:
+          type: string
+          description: ID of the user who recorded this episode
+    EpisodeSubTask:
+      type: object
+      description: Subtask with execution history
+      properties:
+        id:
+          type: string
+          description: Episode subtask ID - use this for API path parameters
+        subtask_id:
+          type: string
+          description: Reference to the subtask definition
+        name:
+          type: string
+          description: Subtask name
+        order_index:
+          type: integer
+          description: Execution order (0-indexed)
+        status:
+          $ref: "#/components/schemas/SubTaskCollectionStatus"
+        executions:
+          type: array
+          description: List of executions for this subtask
+          items:
+            $ref: "#/components/schemas/EpisodeSubTaskExecution"
+      required:
+        - id
+        - subtask_id
+        - name
+        - order_index
+        - status
+    EpisodeSubTaskExecution:
+      type: object
+      description: Execution record for a subtask
+      properties:
+        id:
+          type: string
+          description: Execution ID
+        status:
+          $ref: '#/components/schemas/ExecutionStatus'
+        started_at:
+          type: string
+          format: date-time
+          description: Execution start time
+        finished_at:
+          type: string
+          format: date-time
+          description: Execution finish time (null if still running)
+      required:
+        - id
+        - status
+
+    # === Episode Recording schemas ===
+    EpisodeRecordingsResponse:
+      type: object
+      description: Presigned URLs for episode video recordings, keyed by feature name
+      required:
+        - recordings
+      properties:
+        recordings:
+          type: object
+          additionalProperties:
+            type: string
+          description: Map of feature name to presigned S3 URL (e.g. "observation.image.hand" -> "https://...")
+    EpisodeFeatureStats:
+      type: object
+      description: Statistics for a single feature
+      required:
+        - min
+        - max
+        - mean
+        - std
+        - count
+      properties:
+        min:
+          description: Minimum values (scalar or array per channel/dimension)
+        max:
+          description: Maximum values (scalar or array per channel/dimension)
+        mean:
+          description: Mean values (scalar or array per channel/dimension)
+        std:
+          description: Standard deviation values (scalar or array per channel/dimension)
+        count:
+          type: integer
+          description: Number of frames
+    EpisodeStatsResponse:
+      type: object
+      description: Statistics for all features in the episode
+      required:
+        - stats
+      properties:
+        stats:
+          type: object
+          additionalProperties:
+            $ref: "#/components/schemas/EpisodeFeatureStats"
+          description: Map of feature name to statistics
+
+    # === Site schemas ===
+    Site:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Site ID
+        name:
+          type: string
+          description: Site name
+        organization_id:
+          type: string
+          description: Organization ID
+        created_at:
+          type: string
+          format: date-time
+          description: Created at
+        updated_at:
+          type: string
+          format: date-time
+          description: Updated at
+      required:
+        - id
+        - name
+        - organization_id
+    SiteListResponse:
+      type: object
+      properties:
+        sites:
+          type: array
+          items:
+            $ref: "#/components/schemas/Site"
+        pagination:
+          $ref: "#/components/schemas/Pagination"
+      required:
+        - sites
+        - pagination
+    SiteCreate:
+      type: object
+      properties:
+        organization_id:
+          type: string
+          description: Organization ID
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+          description: Site name
+      required:
+        - organization_id
+        - name
+    SiteUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+          description: Site name
+
+    # === Location schemas (new) ===
+    Location:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Location ID
+        name:
+          type: string
+          description: Location name
+        site_id:
+          type: string
+          description: Site ID
+        site_name:
+          type: string
+          description: Site name
+      required:
+        - id
+        - name
+        - site_id
+        - site_name
+    LocationCreate:
+      type: object
+      properties:
+        name:
+          type: string
+          description: Location name
+        organization_id:
+          type: string
+          description: Organization id
+        site_id:
+          type: string
+          description: Site ID
+      required:
+        - name
+        - organization_id
+        - site_id
+    LocationUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+          description: Location name
+
+    RobotStatusUpdateRequest:
+      type: object
+      properties:
+        robot_type:
+          type: string
+          description: Type of the robot (e.g., HSR)
+        reported_at:
+          type: string
+          format: date-time
+          description: Timestamp when the status was reported
+        status:
+          $ref: "#/components/schemas/RobotStatusDetail"
+      required:
+        - robot_type
+        - reported_at
+        - status
+
+    RobotStatusDetail:
+      type: object
+      properties:
+        battery:
+          $ref: "#/components/schemas/BatteryStatus"
+        connection:
+          $ref: "#/components/schemas/ConnectionStatus"
+        uptime_sec:
+          type: number
+          format: double
+          description: Robot uptime in seconds
+        metrics:
+          type: array
+          description: List of robot metrics
+          items:
+            $ref: "#/components/schemas/RobotMetric"
+        gate_conditions:
+          $ref: "#/components/schemas/GateConditionStatus"
+      required:
+        - battery
+        - connection
+        - uptime_sec
+
+    BatteryStatus:
+      type: object
+      properties:
+        pct:
+          type: integer
+          description: Battery percentage (0-100)
+        charging:
+          type: boolean
+          description: Whether the battery is currently charging
+      required:
+        - pct
+        - charging
+
+    ConnectionStatus:
+      type: object
+      properties:
+        quality_pct:
+          type: integer
+          description: Connection quality percentage (0-100)
+      required:
+        - quality_pct
+
+    RobotMetric:
+      type: object
+      properties:
+        name:
+          type: string
+          description: Metric name
+        type:
+          type: string
+          description: Metric type (scalar, vector, map, array)
+          enum:
+            - scalar
+            - vector
+            - map
+            - array
+        unit:
+          type: string
+          description: Unit of measurement
+        value:
+          description: Metric value (type depends on the metric type)
+        labels:
+          type: object
+          description: Optional labels for the metric
+          additionalProperties:
+            type: string
+      required:
+        - name
+        - type
+        - unit
+        - value
+
+    ErrorResponse:
+      type: object
+      properties:
+        code:
+          type: integer
+          description: HTTP status code
+        message:
+          type: string
+          description: Error message
+      required:
+        - code
+        - message
+
+    RobotStatusStreamResponse:
+      type: object
+      description: |
+        SSE response for robot status stream.
+        This is a simplified, flattened version of RobotStatusUpdateRequest
+        designed for efficient real-time streaming to clients via Server-Sent Events.
+      properties:
+        robot_id:
+          type: string
+          description: ID of robot
+        robot_type:
+          type: string
+          description: Type of the robot
+        status:
+          $ref: "#/components/schemas/RobotStatusStreamDetail"
+      required:
+        - robot_id
+        - robot_type
+        - status
+
+    RobotStatusStreamDetail:
+      type: object
+      description: |
+        Simplified robot status for SSE streaming.
+        This is a flattened version of RobotStatusDetail, extracting only
+        the essential metrics (battery percentage from Battery.pct,
+        connection quality from Connection.quality_pct, and uptime).
+        Metrics array is omitted for bandwidth efficiency.
+      properties:
+        battery_pct:
+          type: integer
+          description: Battery percentage (0-100), extracted from RobotStatusDetail.battery.pct
+        connection_pct:
+          type: integer
+          description: Connection quality percentage (0-100), extracted from RobotStatusDetail.connection.quality_pct
+        uptime_sec:
+          type: integer
+          description: Robot uptime in seconds
+        gate_conditions:
+          $ref: "#/components/schemas/GateConditionStatus"
+      required:
+        - battery_pct
+        - connection_pct
+        - uptime_sec
+
+    # === Robot Operator Schemas ===
+
+    RobotOperator:
+      type: object
+      description: Active operator identity for a robot
+      properties:
+        user_id:
+          type: string
+          description: User ID of the operator
+        display_name:
+          type: string
+          description: Display name of the operator
+        organization_name:
+          type: string
+          description: Organization name of the operator
+      required:
+        - user_id
+        - display_name
+        - organization_name
+
+    RobotOperatorRequest:
+      type: object
+      description: Request body for setting robot operator
+      properties:
+        user_id:
+          type: string
+        display_name:
+          type: string
+        organization_name:
+          type: string
+      required:
+        - user_id
+        - display_name
+        - organization_name
+
+    # === Gate Condition Schemas ===
+
+    GateConditionStatus:
+      type: object
+      description: Recording gate status with full group/condition hierarchy
+      properties:
+        gate_level:
+          type: integer
+          description: Overall gate level (0=open, 1=block start, 2=hard stop)
+        groups:
+          type: object
+          description: Gate groups keyed by group name
+          additionalProperties:
+            $ref: "#/components/schemas/GateGroupStatus"
+      required:
+        - gate_level
+        - groups
+
+    GateGroupStatus:
+      type: object
+      description: Status of a single gate group
+      properties:
+        level:
+          type: integer
+          description: Group escalation level
+        settled:
+          type: boolean
+          description: Whether the group has settled
+        conditions:
+          type: array
+          items:
+            $ref: "#/components/schemas/GateCondition"
+      required:
+        - level
+        - settled
+        - conditions
+
+    GateCondition:
+      type: object
+      description: Status of a single gate condition within a group
+      properties:
+        name:
+          type: string
+          description: Condition name
+        passed:
+          type: boolean
+          description: Whether the condition is currently passing
+        reason:
+          type: string
+          description: Human-readable reason (e.g. "ok", "timeout (2.1s > 1.0s)")
+        escalation:
+          type: integer
+          description: Escalation level if failing (0=ok, 1=block, 2=hard stop)
+      required:
+        - name
+        - passed
+        - reason
+        - escalation
+
+    # === Fleet Schemas ===
+    FleetSiteSummary:
+      type: object
+      description: Fleet summary for a single site
+      properties:
+        site:
+          type: string
+          description: Site name
+        site_id:
+          type: string
+          description: Site ID
+        robot_types:
+          type: object
+          description: Robot type summaries keyed by robot type name
+          additionalProperties:
+            $ref: "#/components/schemas/FleetRobotTypeSummary"
+      required:
+        - site
+        - site_id
+        - robot_types
+
+    FleetRobotTypeSummary:
+      type: object
+      description: Leader/follower status counts for a robot type
+      properties:
+        leader:
+          $ref: "#/components/schemas/FleetStatusCount"
+          nullable: true
+          description: Leader component status (null if no robots have leader component)
+        follower:
+          $ref: "#/components/schemas/FleetStatusCount"
+          description: Follower (robot body) status
+      required:
+        - follower
+
+    FleetStatusCount:
+      type: object
+      description: Operational and total count
+      properties:
+        operational:
+          type: integer
+          description: Number of operational units
+        total:
+          type: integer
+          description: Total number of units
+      required:
+        - operational
+        - total
+
+    FleetSiteStats:
+      type: object
+      description: Collection time statistics for a single site
+      properties:
+        site:
+          type: string
+          description: Site name
+        site_id:
+          type: string
+          description: Site ID
+        robot_types:
+          type: array
+          items:
+            $ref: "#/components/schemas/FleetRobotTypeStats"
+      required:
+        - site
+        - site_id
+        - robot_types
+
+    FleetRobotTypeStats:
+      type: object
+      description: Collection time and uptime stats for a robot type
+      properties:
+        robot_type:
+          type: string
+          description: Robot type name
+        robot_uptime:
+          type: number
+          nullable: true
+          description: Robot uptime in hours
+        uptime_rate:
+          type: number
+          nullable: true
+          minimum: 0
+          maximum: 1
+          description: Robot uptime rate (0.0–1.0) relative to total possible uptime in the period
+        robot_count:
+          type: integer
+          nullable: true
+          description: Number of distinct robots with uptime data in the period
+        data_collection_time:
+          type: number
+          description: Data collection time in hours
+      required:
+        - robot_type
+        - data_collection_time
+
+    CollectionTrend:
+      type: object
+      description: Time series collection trend data
+      properties:
+        labels:
+          type: array
+          items:
+            type: string
+          description: Time axis labels (ISO 8601 format)
+        by_site:
+          type: array
+          items:
+            $ref: "#/components/schemas/TrendSeries"
+        by_robot_type:
+          type: array
+          items:
+            $ref: "#/components/schemas/TrendSeries"
+      required:
+        - labels
+        - by_site
+        - by_robot_type
+
+    TrendSeries:
+      type: object
+      description: A single data series for the trend chart
+      properties:
+        label:
+          type: string
+          description: Series label (site name or robot type name)
+        data:
+          type: array
+          items:
+            type: number
+          description: Data points corresponding to labels (hours)
+      required:
+        - label
+        - data
+
+    TaskVersionParameter:
+      type: object
+      description: |
+        Defines a template parameter for subtask names. Subtask names can
+        reference parameters using {key} syntax (e.g. "Pick with {arm} arm").
+        When an episode is created, each parameter is resolved to one of
+        its allowed values.
+      properties:
+        key:
+          type: string
+          description: Parameter key used in subtask name templates as {key}
+          minLength: 1
+        values:
+          type: array
+          items:
+            type: string
+            minLength: 1
+          minItems: 1
+          description: List of allowed values for this parameter
+      required:
+        - key
+        - values
+
+    TaskSummaryResponse:
+      type: object
+      description: Aggregated task summary
+      properties:
+        total_tasks:
+          type: integer
+          description: Total number of tasks matching the filter
+        target_duration_seconds:
+          type: integer
+          format: int64
+          description: Sum of target duration across all approved task versions
+        target_episode_count:
+          type: integer
+          description: Sum of target episode count across all approved task versions
+      required:
+        - total_tasks
+        - target_duration_seconds
+        - target_episode_count
+
+    TaskCompletionTrend:
+      type: object
+      description: Task completion trend grouped by 2-week deadline periods
+      properties:
+        periods:
+          type: array
+          items:
+            $ref: "#/components/schemas/TaskTrendPeriod"
+          description: Trend data for each 2-week period
+      required:
+        - periods
+
+    TaskTrendPeriod:
+      type: object
+      description: Trend data for a single period
+      properties:
+        start:
+          type: string
+          format: date-time
+          description: Period start date (inclusive)
+        end:
+          type: string
+          format: date-time
+          description: Period end date (exclusive)
+        groups:
+          type: array
+          items:
+            $ref: "#/components/schemas/TaskTrendGroup"
+          description: Breakdown by category or status
+      required:
+        - groups
+
+    TaskTrendGroup:
+      type: object
+      description: A single group within a trend period
+      properties:
+        label:
+          type: string
+          description: Group label (tag name or status name)
+        target_tasks:
+          type: integer
+          description: Number of tasks in this group
+        actual_tasks:
+          type: integer
+          description: Number of completed tasks in this group
+        target_duration:
+          type: integer
+          format: int64
+          description: Sum of target duration (seconds)
+        actual_duration:
+          type: integer
+          format: int64
+          description: Sum of actual collected duration (seconds)
+        target_episodes:
+          type: integer
+          description: Sum of target episode count
+        actual_episodes:
+          type: integer
+          description: Sum of actual collected episode count
+      required:
+        - label
+        - target_tasks
+        - actual_tasks
+        - target_duration
+        - actual_duration
+        - target_episodes
+        - actual_episodes
+
+    UserImportRequest:
+      type: object
+      description: Request body for CSV user import
+      properties:
+        csv_content:
+          type: string
+          description: CSV content as a string (UTF-8, with or without BOM)
+      required:
+        - csv_content
+
+    UserImportValidationResponse:
+      type: object
+      description: Validation result for CSV user import
+      properties:
+        valid_rows:
+          type: array
+          items:
+            $ref: "#/components/schemas/UserImportValidRow"
+          description: Rows that passed validation
+        duplicate_rows:
+          type: array
+          items:
+            $ref: "#/components/schemas/UserImportRowError"
+          description: Rows with duplicate emails (will be skipped)
+        error_rows:
+          type: array
+          items:
+            $ref: "#/components/schemas/UserImportRowError"
+          description: Rows with validation errors
+        summary:
+          $ref: "#/components/schemas/UserImportSummary"
+      required:
+        - valid_rows
+        - duplicate_rows
+        - error_rows
+        - summary
+
+    UserImportValidRow:
+      type: object
+      description: A single valid row from CSV user import
+      properties:
+        row_number:
+          type: integer
+          description: 1-based row number in the CSV (excluding header)
+        email:
+          type: string
+        display_name:
+          type: string
+        role:
+          type: string
+      required:
+        - row_number
+        - email
+        - display_name
+        - role
+
+    UserImportRowError:
+      type: object
+      description: A row with errors from CSV user import
+      properties:
+        row_number:
+          type: integer
+          description: 1-based row number in the CSV (excluding header)
+        email:
+          type: string
+          description: Email address (if available)
+        errors:
+          type: array
+          items:
+            type: string
+          description: List of error messages for this row
+      required:
+        - row_number
+        - errors
+
+    UserImportSummary:
+      type: object
+      description: Summary counts for user import validation
+      properties:
+        valid_count:
+          type: integer
+        duplicate_count:
+          type: integer
+        error_count:
+          type: integer
+      required:
+        - valid_count
+        - duplicate_count
+        - error_count
+
+    UserImportResponse:
+      type: object
+      description: Result of user import execution
+      properties:
+        imported_count:
+          type: integer
+          description: Number of users successfully imported
+        skipped_count:
+          type: integer
+          description: Number of duplicate users skipped
+        error_count:
+          type: integer
+          description: Number of rows that failed
+        errors:
+          type: array
+          items:
+            $ref: "#/components/schemas/UserImportRowError"
+          description: Details of rows that failed
+      required:
+        - imported_count
+        - skipped_count
+        - error_count
+        - errors
+
+    TaskImportRequest:
+      type: object
+      description: Request body for CSV task import
+      properties:
+        csv_content:
+          type: string
+          description: CSV content as a string (UTF-8, with or without BOM)
+      required:
+        - csv_content
+
+    TaskImportValidationResponse:
+      type: object
+      description: Validation result for CSV task import
+      properties:
+        valid_rows:
+          type: array
+          items:
+            $ref: "#/components/schemas/TaskImportRow"
+          description: Rows that passed validation
+        duplicate_rows:
+          type: array
+          items:
+            $ref: "#/components/schemas/TaskImportRowError"
+          description: Rows with duplicate task names (will be skipped)
+        error_rows:
+          type: array
+          items:
+            $ref: "#/components/schemas/TaskImportRowError"
+          description: Rows with validation errors
+        summary:
+          $ref: "#/components/schemas/TaskImportSummary"
+      required:
+        - valid_rows
+        - duplicate_rows
+        - error_rows
+        - summary
+
+    TaskImportRow:
+      type: object
+      description: A single valid row from CSV import
+      properties:
+        row_number:
+          type: integer
+          description: 1-based row number in the CSV (excluding header)
+        name:
+          type: string
+        description:
+          type: string
+        manual_url:
+          type: string
+        priority:
+          type: string
+        difficulty:
+          type: string
+        status:
+          type: string
+        deadline:
+          type: string
+        robot_type:
+          type: string
+        tags:
+          type: string
+      required:
+        - row_number
+        - name
+        - manual_url
+        - priority
+        - difficulty
+        - deadline
+
+    TaskImportRowError:
+      type: object
+      description: A row with errors from CSV import
+      properties:
+        row_number:
+          type: integer
+          description: 1-based row number in the CSV (excluding header)
+        errors:
+          type: array
+          items:
+            type: string
+          description: List of error messages for this row
+        name:
+          type: string
+          description: Task name (if available)
+      required:
+        - row_number
+        - errors
+
+    TaskImportSummary:
+      type: object
+      description: Summary counts for import validation
+      properties:
+        valid_count:
+          type: integer
+        duplicate_count:
+          type: integer
+        error_count:
+          type: integer
+      required:
+        - valid_count
+        - duplicate_count
+        - error_count
+
+    TaskImportResponse:
+      type: object
+      description: Result of task import execution
+      properties:
+        imported_count:
+          type: integer
+          description: Number of tasks successfully imported
+        skipped_count:
+          type: integer
+          description: Number of duplicate tasks skipped
+        error_count:
+          type: integer
+          description: Number of rows with errors
+        errors:
+          type: array
+          items:
+            $ref: "#/components/schemas/TaskImportRowError"
+          description: Details of rows that failed
+      required:
+        - imported_count
+        - skipped_count
+        - error_count
+        - errors

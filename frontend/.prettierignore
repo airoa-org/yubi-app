@@ -1,0 +1,21 @@
+# Build artifacts
+.next
+out
+build
+dist
+
+# Dependencies
+node_modules
+
+# Other
+*.min.js
+*.min.css
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# MSW
+public/mockServiceWorker.js
+
+# Documentation
+*.md

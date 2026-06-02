@@ -1,0 +1,3 @@
+email,display_name,role
+user@example.com,John Doe,viewer
+user2@example.com,Jane Smith,operator

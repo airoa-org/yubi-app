@@ -35,10 +35,9 @@ type Robot = z.infer<typeof schemas.Robot>;
 
 function buildUpdateRobotSchema(t: (key: string) => string) {
   return schemas.RobotUpdate.extend({
-    robot_type: z.enum(
-      [ROBOT_TYPE.YUBI_STATIONARY, ROBOT_TYPE.YUBI_PORTABLE],
-      { errorMap: () => ({ message: t("robotForm.robotTypeRequired") }) }
-    ),
+    robot_type: z.enum([ROBOT_TYPE.YUBI_STATIONARY, ROBOT_TYPE.YUBI_PORTABLE], {
+      errorMap: () => ({ message: t("robotForm.robotTypeRequired") }),
+    }),
   });
 }
 

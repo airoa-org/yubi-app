@@ -31,10 +31,9 @@ import { useMeQuery } from "@/features/users";
 
 function buildCreateRobotSchema(t: (key: string) => string) {
   return schemas.RobotCreate.extend({
-    robot_type: z.enum(
-      [ROBOT_TYPE.YUBI_STATIONARY, ROBOT_TYPE.YUBI_PORTABLE],
-      { errorMap: () => ({ message: t("robotForm.robotTypeRequired") }) }
-    ),
+    robot_type: z.enum([ROBOT_TYPE.YUBI_STATIONARY, ROBOT_TYPE.YUBI_PORTABLE], {
+      errorMap: () => ({ message: t("robotForm.robotTypeRequired") }),
+    }),
   });
 }
 
